@@ -99,56 +99,6 @@
             }
         }
         
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-        }
-        
-        .calendar-day {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #e5e7eb;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.75rem;
-            font-weight: 500;
-            min-height: 32px;
-        }
-        
-        .calendar-day:hover {
-            background-color: #f3f4f6;
-        }
-        
-        .calendar-day.completed {
-            background-color: #ea580c;
-            color: white;
-        }
-        
-        .calendar-day.today {
-            border: 2px solid #ea580c;
-            font-weight: bold;
-        }
-        
-        .calendar-day.other-month {
-            color: #9ca3af;
-            background-color: #f9fafb;
-        }
-        
-        .calendar-day.disabled {
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-        
-        @media (max-width: 640px) {
-            .calendar-day {
-                font-size: 0.625rem;
-                min-height: 28px;
-            }
-        }
-        
         .modal-backdrop {
             backdrop-filter: blur(4px);
         }
@@ -166,6 +116,19 @@
                 opacity: 1;
                 transform: translateY(0) scale(1);
             }
+        }
+        
+        .export-text {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -301,6 +264,11 @@
                             class="flex-1 py-2 md:py-3 px-2 md:px-4 rounded-lg font-semibold transition-all duration-300 text-sm md:text-base">
                         📊 Rekap Bulanan
                     </button>
+                    <button x-show="isAdmin" @click="activeTab = 'admin'" 
+                            :class="activeTab === 'admin' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+                            class="flex-1 py-2 md:py-3 px-2 md:px-4 rounded-lg font-semibold transition-all duration-300 text-sm md:text-base">
+                        🔧 Admin
+                    </button>
                 </div>
             </div>
         </div>
@@ -392,77 +360,6 @@
                 </div>
             </div>
 
-            <!-- Calendar View for Admin -->
-            <div x-show="isAdmin" class="bg-white rounded-xl card-shadow overflow-hidden mb-6">
-                <div class="p-4 md:p-6 border-b border-gray-200">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                        <div>
-                            <h3 class="text-lg md:text-xl font-bold text-gray-800">📅 Kalender Admin - Edit Progress Harian</h3>
-                            <p class="text-xs md:text-sm text-gray-600 mt-1">Klik tanggal untuk melihat dan edit progress peserta</p>
-                        </div>
-                        
-                        <!-- Calendar Month Navigation -->
-                        <div class="flex items-center space-x-4">
-                            <label class="font-semibold text-gray-700 text-sm">Bulan Kalender:</label>
-                            <select x-model="calendarSelectedMonth" @change="updateCalendarView()" 
-                                    class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
-                                <template x-for="month in availableMonths" :key="month.value">
-                                    <option :value="month.value" x-text="month.label"></option>
-                                </template>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 md:p-6">
-                    <!-- Calendar Header -->
-                    <div class="calendar-grid mb-2">
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Min</div>
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Sen</div>
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Sel</div>
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Rab</div>
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Kam</div>
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Jum</div>
-                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Sab</div>
-                    </div>
-                    
-                    <!-- Calendar Days -->
-                    <div class="calendar-grid">
-                        <template x-for="day in getCalendarDays()" :key="day.date">
-                            <div class="calendar-day" 
-                                 :class="{
-                                     'completed': day.isCompleted,
-                                     'today': day.isToday,
-                                     'other-month': day.isOtherMonth,
-                                     'disabled': day.isFuture
-                                 }"
-                                 @click="day.isOtherMonth || day.isFuture ? null : openDayEdit(day.date)"
-                                 x-text="day.day">
-                            </div>
-                        </template>
-                    </div>
-                    
-                    <div class="mt-4 text-xs md:text-sm text-gray-600 space-y-2">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <span class="inline-flex items-center">
-                                <div class="w-3 h-3 bg-primary rounded mr-2"></div>
-                                Khatam (30/30)
-                            </span>
-                            <span class="inline-flex items-center">
-                                <div class="w-3 h-3 border-2 border-primary rounded mr-2"></div>
-                                Hari ini
-                            </span>
-                            <span class="inline-flex items-center">
-                                <div class="w-3 h-3 bg-gray-200 rounded mr-2"></div>
-                                Belum khatam
-                            </span>
-                        </div>
-                        <p class="text-xs text-gray-500">
-                            <strong>Bulan saat ini:</strong> <span x-text="getCalendarMonthInfo()"></span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Monthly Progress Table -->
             <div class="bg-white rounded-xl card-shadow overflow-hidden">
                 <div class="p-4 md:p-6 border-b border-gray-200">
@@ -500,6 +397,55 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Admin -->
+        <div x-show="activeTab === 'admin' && isAdmin" class="container mx-auto px-4 pb-8">
+            <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
+                <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">🔧 Panel Admin</h3>
+                
+                <div class="space-y-6">
+                    <!-- Export WhatsApp Data -->
+                    <div class="border border-gray-200 rounded-lg p-4 md:p-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">📤 Ekspor Data WhatsApp</h4>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Export data progress hari ini dalam format yang siap untuk dibagikan ke WhatsApp grup.
+                        </p>
+                        
+                        <button @click="generateWhatsAppExport()" 
+                                class="btn-primary text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-300 text-sm font-semibold">
+                            📱 Generate Export WhatsApp
+                        </button>
+                        
+                        <div x-show="exportText" class="mt-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-sm font-medium text-gray-700">Hasil Export (Copy & Paste ke WhatsApp):</label>
+                                <button @click="copyToClipboard()" 
+                                        class="text-xs px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all">
+                                    📋 Copy
+                                </button>
+                            </div>
+                            <div class="export-text" x-text="exportText"></div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                ✅ Data berhasil di-generate! Klik "Copy" lalu paste ke WhatsApp grup.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Reset System -->
+                    <div class="border border-red-200 rounded-lg p-4 md:p-6 bg-red-50">
+                        <h4 class="text-lg font-semibold text-red-800 mb-3">🔄 Reset Sistem</h4>
+                        <p class="text-sm text-red-700 mb-4">
+                            <strong>Peringatan:</strong> Ini akan menghapus semua data progress dan mengembalikan sistem ke kondisi awal.
+                        </p>
+                        
+                        <button @click="resetSystem()" 
+                                class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-300 text-sm font-semibold">
+                            🗑️ Reset Semua Data
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -546,68 +492,6 @@
                     <button @click="adminLogin()" 
                             class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300 text-sm md:text-base">
                         Login
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Day Edit Modal (Admin) -->
-        <div x-show="showDayEditModal" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div class="bg-white rounded-xl p-4 md:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto card-shadow"
-                 @click.away="showDayEditModal = false">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg md:text-xl font-bold text-gray-800">✏️ Edit Progress Tanggal <span x-text="formatEditDate()"></span></h3>
-                    <button @click="showDayEditModal = false" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="mb-4">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-                        <span class="text-sm text-gray-600">Total yang sudah centang: <span class="font-bold text-primary" x-text="getEditDayCompleted()"></span>/30</span>
-                        <div class="flex space-x-2">
-                            <button @click="toggleAllParticipants(true)" class="text-xs px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all">
-                                ✅ Centang Semua
-                            </button>
-                            <button @click="toggleAllParticipants(false)" class="text-xs px-3 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all">
-                                ❌ Hapus Semua
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <template x-for="participant in participants" :key="participant.id">
-                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                            <span class="text-sm font-medium text-gray-700" x-text="participant.name"></span>
-                            <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" 
-                                       :checked="isEditDayCompleted(participant.id)" 
-                                       @change="toggleEditDayParticipant(participant.id)"
-                                       class="mr-2 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded">
-                                <span class="text-xs" :class="isEditDayCompleted(participant.id) ? 'text-green-600' : 'text-gray-500'" x-text="isEditDayCompleted(participant.id) ? '✅' : '⏳'"></span>
-                            </label>
-                        </div>
-                    </template>
-                </div>
-                
-                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-6">
-                    <button @click="showDayEditModal = false" 
-                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-300">
-                        Batal
-                    </button>
-                    <button @click="saveDayEdit()" 
-                            class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300">
-                        Simpan Perubahan
                     </button>
                 </div>
             </div>
@@ -668,16 +552,14 @@
                 todayChecks: {},
                 monthlyData: {},
                 selectedMonth: '',
-                calendarSelectedMonth: '', // Separate month selection for calendar
                 availableMonths: [],
                 
                 // Admin
                 isAdmin: false,
                 showAdminLogin: false,
-                showDayEditModal: false,
-                editingDate: '',
                 adminCredentials: { username: '', password: '' },
                 adminError: '',
+                exportText: '',
                 
                 // Announcement
                 showAnnouncement: true,
@@ -695,7 +577,6 @@
                     this.loadData();
                     this.generateAvailableMonths();
                     this.selectedMonth = this.getCurrentMonth();
-                    this.calendarSelectedMonth = this.getCurrentMonth(); // Initialize calendar month
                     this.updateMonthlyData();
                     this.startCountdown();
                     this.scheduleReset();
@@ -886,10 +767,6 @@
                     }
                 },
 
-                updateCalendarView() {
-                    // Method to trigger calendar re-render when month changes
-                },
-
                 getParticipantMonthlyCount(participantId) {
                     const monthData = this.monthlyData[this.selectedMonth];
                     if (!monthData || !monthData.participantChecks[participantId]) {
@@ -914,75 +791,6 @@
                     return total;
                 },
 
-                getCalendarMonthInfo() {
-                    if (!this.calendarSelectedMonth) return '';
-                    const [year, month] = this.calendarSelectedMonth.split('-');
-                    const date = new Date(year, month - 1, 1);
-                    const daysInMonth = this.getDaysInMonth(this.calendarSelectedMonth);
-                    return `${date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} (${daysInMonth} hari)`;
-                },
-
-                // Calendar functions
-                getCalendarDays() {
-                    if (!this.calendarSelectedMonth) return [];
-                    
-                    const [year, month] = this.calendarSelectedMonth.split('-');
-                    const firstDay = new Date(year, month - 1, 1);
-                    const lastDay = new Date(year, month, 0);
-                    const daysInMonth = lastDay.getDate();
-                    const startDay = firstDay.getDay(); // 0 = Sunday
-                    
-                    const days = [];
-                    const today = this.getTodayKey();
-                    const currentDate = new Date();
-                    
-                    // Add empty cells for days before month starts
-                    for (let i = 0; i < startDay; i++) {
-                        const prevMonthDate = new Date(year, month - 1, -startDay + i + 1);
-                        days.push({
-                            day: prevMonthDate.getDate(),
-                            date: prevMonthDate.toISOString().slice(0, 10),
-                            isOtherMonth: true,
-                            isToday: false,
-                            isCompleted: false,
-                            isFuture: false
-                        });
-                    }
-                    
-                    // Add days of current month
-                    for (let day = 1; day <= daysInMonth; day++) {
-                        const date = new Date(year, month - 1, day);
-                        const dateKey = date.toISOString().slice(0, 10);
-                        const dayCompleted = this.todayChecks[dateKey]?.length || 0;
-                        const isFuture = date > currentDate;
-                        
-                        days.push({
-                            day: day,
-                            date: dateKey,
-                            isOtherMonth: false,
-                            isToday: dateKey === today,
-                            isCompleted: dayCompleted === 30,
-                            isFuture: isFuture
-                        });
-                    }
-                    
-                    // Fill remaining cells with next month
-                    const remainingCells = 42 - days.length; // 6 rows × 7 days
-                    for (let i = 1; i <= remainingCells; i++) {
-                        const nextMonthDate = new Date(year, month, i);
-                        days.push({
-                            day: nextMonthDate.getDate(),
-                            date: nextMonthDate.toISOString().slice(0, 10),
-                            isOtherMonth: true,
-                            isToday: false,
-                            isCompleted: false,
-                            isFuture: false
-                        });
-                    }
-                    
-                    return days;
-                },
-
                 // Admin functions
                 adminLogin() {
                     if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
@@ -997,104 +805,135 @@
 
                 logout() {
                     this.isAdmin = false;
+                    this.activeTab = 'checklist';
                 },
 
-                openDayEdit(date) {
-                    this.editingDate = date;
-                    this.showDayEditModal = true;
-                },
-
-                formatEditDate() {
-                    if (!this.editingDate) return '';
-                    return new Date(this.editingDate + 'T12:00:00').toLocaleDateString('id-ID', {
+                // WhatsApp Export Function
+                generateWhatsAppExport() {
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('id-ID', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                     });
-                },
-
-                isEditDayCompleted(participantId) {
-                    if (!this.editingDate) return false;
-                    return this.todayChecks[this.editingDate]?.includes(participantId) || false;
-                },
-
-                getEditDayCompleted() {
-                    if (!this.editingDate) return 0;
-                    return this.todayChecks[this.editingDate]?.length || 0;
-                },
-
-                toggleEditDayParticipant(participantId) {
-                    if (!this.editingDate) return;
+                    const timeStr = now.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
                     
-                    if (!this.todayChecks[this.editingDate]) {
-                        this.todayChecks[this.editingDate] = [];
-                    }
+                    const rotatedParticipants = this.getRotatedParticipants();
+                    const completedParticipants = [];
+                    const pendingParticipants = [];
                     
-                    const index = this.todayChecks[this.editingDate].indexOf(participantId);
-                    if (index > -1) {
-                        this.todayChecks[this.editingDate].splice(index, 1);
-                    } else {
-                        this.todayChecks[this.editingDate].push(participantId);
-                    }
-                },
-
-                toggleAllParticipants(checked) {
-                    if (!this.editingDate) return;
-                    
-                    if (checked) {
-                        this.todayChecks[this.editingDate] = this.participants.map(p => p.id);
-                    } else {
-                        this.todayChecks[this.editingDate] = [];
-                    }
-                },
-
-                saveDayEdit() {
-                    this.updateMonthlyRecordForDate(this.editingDate);
-                    this.saveData();
-                    this.showDayEditModal = false;
-                    this.editingDate = '';
-                },
-
-                updateMonthlyRecordForDate(date) {
-                    const month = date.slice(0, 7);
-                    
-                    if (!this.monthlyData[month]) {
-                        this.monthlyData[month] = {
-                            participantChecks: {},
-                            khatamDays: []
+                    rotatedParticipants.forEach((participant, index) => {
+                        const juzNumber = index + 1;
+                        const juzDetail = this.getJuzDetails(juzNumber);
+                        const isCompleted = this.isCompleted(participant.id);
+                        
+                        const participantInfo = {
+                            name: participant.name,
+                            juz: juzNumber,
+                            juzName: juzDetail.name,
+                            content: juzDetail.content,
+                            status: isCompleted ? '✅' : '⏳'
                         };
-                    }
-                    
-                    // Update participant monthly counts for specific date
-                    this.participants.forEach(participant => {
-                        if (!this.monthlyData[month].participantChecks[participant.id]) {
-                            this.monthlyData[month].participantChecks[participant.id] = [];
-                        }
                         
-                        const checks = this.monthlyData[month].participantChecks[participant.id];
-                        const isCompleted = this.todayChecks[date]?.includes(participant.id) || false;
-                        const alreadyRecorded = checks.includes(date);
-                        
-                        if (isCompleted && !alreadyRecorded) {
-                            checks.push(date);
-                        } else if (!isCompleted && alreadyRecorded) {
-                            const index = checks.indexOf(date);
-                            checks.splice(index, 1);
+                        if (isCompleted) {
+                            completedParticipants.push(participantInfo);
+                        } else {
+                            pendingParticipants.push(participantInfo);
                         }
                     });
                     
-                    // Update khatam tracking for specific date
-                    const completedOnDate = this.todayChecks[date]?.length || 0;
-                    const khatamDays = this.monthlyData[month].khatamDays;
-                    const isKhatamDay = khatamDays.includes(date);
+                    let exportText = `📖 *ONE DAY ONE JUZ TRACKER*\n`;
+                    exportText += `📅 ${dateStr}\n`;
+                    exportText += `🕐 Update: ${timeStr} WIB\n`;
+                    exportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
                     
-                    if (completedOnDate === 30 && !isKhatamDay) {
-                        khatamDays.push(date);
-                    } else if (completedOnDate < 30 && isKhatamDay) {
-                        const index = khatamDays.indexOf(date);
-                        khatamDays.splice(index, 1);
+                    exportText += `📊 *RINGKASAN PROGRESS*\n`;
+                    exportText += `✅ Sudah Selesai: ${completedParticipants.length}/30\n`;
+                    exportText += `⏳ Belum Selesai: ${pendingParticipants.length}/30\n`;
+                    
+                    if (completedParticipants.length === 30) {
+                        exportText += `🎉 *ALHAMDULILLAH KHATAM HARI INI!* 🎉\n`;
                     }
+                    
+                    exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                    
+                    if (completedParticipants.length > 0) {
+                        exportText += `✅ *SUDAH SELESAI (${completedParticipants.length})*\n`;
+                        completedParticipants.forEach(p => {
+                            exportText += `${p.status} ${p.name} - Juz ${p.juz} (${p.juzName})\n`;
+                        });
+                        exportText += `\n`;
+                    }
+                    
+                    if (pendingParticipants.length > 0) {
+                        exportText += `⏳ *BELUM SELESAI (${pendingParticipants.length})*\n`;
+                        pendingParticipants.forEach(p => {
+                            exportText += `${p.status} ${p.name} - Juz ${p.juz} (${p.juzName})\n`;
+                            exportText += `    ${p.content}\n`;
+                        });
+                    }
+                    
+                    exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                    exportText += `💝 Semoga Allah mudahkan kita semua dalam membaca Al-Qur'an\n`;
+                    exportText += `🤲 Barakallahu fiikum\n\n`;
+                    exportText += `#OneDayOneJuz #AlQuranTracker #Khatam`;
+                    
+                    this.exportText = exportText;
+                },
+
+                copyToClipboard() {
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(this.exportText).then(() => {
+                            alert('✅ Data berhasil di-copy! Sekarang paste ke WhatsApp grup.');
+                        }).catch(() => {
+                            this.fallbackCopy();
+                        });
+                    } else {
+                        this.fallbackCopy();
+                    }
+                },
+
+                fallbackCopy() {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = this.exportText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        alert('✅ Data berhasil di-copy! Sekarang paste ke WhatsApp grup.');
+                    } catch (err) {
+                        alert('❌ Gagal copy. Silakan copy manual dari text box.');
+                    }
+                    document.body.removeChild(textArea);
+                },
+
+                resetSystem() {
+                    if (!confirm('⚠️ PERINGATAN! Ini akan menghapus semua data progress.\n\nApakah Anda yakin?')) {
+                        return;
+                    }
+
+                    if (!confirm('🚨 KONFIRMASI TERAKHIR! Semua data akan hilang!\n\nLanjutkan reset?')) {
+                        return;
+                    }
+
+                    // Reset all data
+                    this.todayChecks = {};
+                    this.monthlyData = {};
+                    this.exportText = '';
+
+                    // Clear localStorage
+                    localStorage.removeItem('quranTrackerData');
+                    localStorage.removeItem('announcementSeen');
+
+                    this.saveData();
+                    alert('✅ Sistem berhasil direset! Halaman akan dimuat ulang.');
+                    
+                    // Reload page
+                    location.reload();
                 },
 
                 // Countdown functions
