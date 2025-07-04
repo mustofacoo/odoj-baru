@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Day One Juz Tracker</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        }
+        
+        .card-shadow {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .completed {
+            background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+            transform: scale(1.02);
+            border: 2px solid #ea580c;
+        }
+        
+        .countdown-timer {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .juz-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .juz-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #ea580c;
+        }
+        
+        .admin-badge {
+            background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        }
+        
+        .khatam-celebration {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            animation: celebration 0.5s ease-in-out;
+        }
+        
+        @keyframes celebration {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+        
+        .text-primary {
+            color: #ea580c;
+        }
+        
+        .bg-primary {
+            background-color: #ea580c;
+        }
+        
+        .border-primary {
+            border-color: #ea580c;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .juz-card {
+                padding: 1rem;
+            }
+            
+            .grid-mobile {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .text-responsive {
+                font-size: 0.875rem;
+            }
+            
+            .countdown-timer {
+                font-size: 1.5rem;
+            }
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+            font-weight: 500;
+            min-height: 32px;
+        }
+        
+        .calendar-day:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .calendar-day.completed {
+            background-color: #ea580c;
+            color: white;
+        }
+        
+        .calendar-day.today {
+            border: 2px solid #ea580c;
+            font-weight: bold;
+        }
+        
+        .calendar-day.other-month {
+            color: #9ca3af;
+            background-color: #f9fafb;
+        }
+        
+        .calendar-day.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 640px) {
+            .calendar-day {
+                font-size: 0.625rem;
+                min-height: 28px;
+            }
+        }
+        
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+        
+        .announcement-modal {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div x-data="quranTracker()" x-init="init()" class="min-h-screen">
+        <!-- Initial Announcement Modal -->
+        <div x-show="showAnnouncement" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 modal-backdrop p-4">
+            <div class="announcement-modal bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full card-shadow border-t-4 border-primary">
+                <div class="text-center">
+                    <div class="bg-primary rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <span class="text-white text-3xl">📖</span>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">📢 Pengumuman Penting</h2>
+                    <div class="text-left bg-orange-50 border-l-4 border-primary p-4 rounded-lg mb-6">
+                        <h3 class="font-semibold text-gray-800 mb-2">⚠️ Perhatikan Deskripsi Juz!</h3>
+                        <ul class="text-sm text-gray-700 space-y-2">
+                            <li>• <strong>WAJIB</strong> membaca deskripsi juz yang akan dibaca</li>
+                            <li>• Ada beberapa juz yang <strong>tidak sesuai</strong> dengan pembagian halaman mushaf</li>
+                            <li>• Penyesuaian dilakukan untuk <strong>menyesuaikan tema</strong> dan kandungan</li>
+                            <li>• Lihat <strong>halaman dan ayat yang tepat</strong> di setiap kartu juz</li>
+                        </ul>
+                    </div>
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6 text-left">
+                        <h3 class="font-semibold text-blue-800 mb-2">🤲 Doa Sebelum Membaca</h3>
+                        <p class="text-sm text-blue-700 italic">
+                            "Ya Allah, turunkan rahmat kepada kami dengan wasilah bacaan Al-Qur'an. 
+                            Jadikan kami lebih mencintai untuk berinteraksi dengan Al-Qur'an daripada berbuat sia-sia. 
+                            Anugerahkan kami pemahaman Al-Qur'an dan pengamalannya. 
+                            Perkenankan Al-Qur'an memberi syafaat untuk kami."
+                        </p>
+                    </div>
+                    <button @click="closeAnnouncement()" 
+                            class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
+                        ✅ Saya Mengerti, Mulai Tracking
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="gradient-bg text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4 md:py-6">
+                <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                    <div class="text-center md:text-left">
+                        <h1 class="text-2xl md:text-4xl font-bold">One Day One Juz</h1>
+                        <p class="text-orange-100 mt-1 text-sm md:text-base">Tracker Membaca Al-Qur'an Bersama</p>
+                    </div>
+                    <div class="text-center md:text-right">
+                        <div x-show="!isAdmin">
+                            <button @click="showAdminLogin = true" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 md:px-4 md:py-2 rounded-lg transition-all duration-300 text-sm md:text-base">
+                                🔑 Admin Login
+                            </button>
+                        </div>
+                        <div x-show="isAdmin" class="admin-badge px-3 py-2 md:px-4 md:py-2 rounded-lg">
+                            <span class="text-white font-semibold text-sm md:text-base">👑 Mode Admin</span>
+                            <button @click="logout()" class="ml-2 text-white hover:text-gray-200 text-sm">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Countdown Timer -->
+        <div class="container mx-auto px-4 py-4">
+            <div class="bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl p-4 md:p-6 card-shadow">
+                <div class="text-center">
+                    <h3 class="text-base md:text-lg font-semibold mb-2">⏰ Countdown Reset Harian</h3>
+                    <div class="countdown-timer text-2xl md:text-4xl mb-2" x-text="formatCountdown()"></div>
+                    <p class="text-gray-300 text-sm md:text-base" x-text="countdownText"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="container mx-auto px-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
+                    <div class="flex items-center">
+                        <div class="bg-primary p-3 rounded-full mr-4 flex-shrink-0">
+                            <span class="text-white text-lg md:text-xl">📅</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-gray-500 text-xs md:text-sm">Tanggal Hari Ini</h3>
+                            <p class="text-sm md:text-xl font-bold text-gray-800 truncate" x-text="getCurrentDate()"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
+                    <div class="flex items-center">
+                        <div class="bg-green-500 p-3 rounded-full mr-4 flex-shrink-0">
+                            <span class="text-white text-lg md:text-xl">✅</span>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-500 text-xs md:text-sm">Selesai Hari Ini</h3>
+                            <p class="text-sm md:text-xl font-bold text-gray-800"><span x-text="getTodayCompleted()"></span>/30</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-4 md:p-6 card-shadow" :class="{'khatam-celebration': getTodayCompleted() === 30}">
+                    <div class="flex items-center">
+                        <div class="bg-yellow-500 p-3 rounded-full mr-4 flex-shrink-0">
+                            <span class="text-white text-lg md:text-xl">🏆</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-gray-500 text-xs md:text-sm">Status Khatam</h3>
+                            <p class="text-sm md:text-xl font-bold text-gray-800 truncate" x-text="getTodayCompleted() === 30 ? 'KHATAM HARI INI! 🎉' : (30 - getTodayCompleted()) + ' lagi untuk Khatam'"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="container mx-auto px-4 mb-6">
+            <div class="bg-white rounded-xl p-2 card-shadow">
+                <div class="flex space-x-1 md:space-x-2">
+                    <button @click="activeTab = 'checklist'" 
+                            :class="activeTab === 'checklist' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+                            class="flex-1 py-2 md:py-3 px-2 md:px-4 rounded-lg font-semibold transition-all duration-300 text-sm md:text-base">
+                        📋 Checklist Harian
+                    </button>
+                    <button @click="activeTab = 'monthly'" 
+                            :class="activeTab === 'monthly' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+                            class="flex-1 py-2 md:py-3 px-2 md:px-4 rounded-lg font-semibold transition-all duration-300 text-sm md:text-base">
+                        📊 Rekap Bulanan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Checklist Harian -->
+        <div x-show="activeTab === 'checklist'" class="container mx-auto px-4 pb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                <template x-for="(participant, index) in getRotatedParticipants()" :key="participant.id">
+                    <div class="juz-card bg-white rounded-xl p-4 md:p-6 card-shadow" 
+                         :class="{'completed': isCompleted(participant.id)}"
+                         @click="toggleCheck(participant.id)">
+                        
+                        <!-- Juz Header -->
+                        <div class="flex justify-between items-start mb-3 md:mb-4">
+                            <div>
+                                <h3 class="text-base md:text-lg font-bold" :class="isCompleted(participant.id) ? 'text-white' : 'text-gray-800'" x-text="'Juz ' + (index + 1)"></h3>
+                                <p class="text-xs md:text-sm" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-500'" x-text="getJuzDetails(index + 1).name"></p>
+                            </div>
+                            <div class="text-xl md:text-2xl" x-text="isCompleted(participant.id) ? '✅' : '⏳'"></div>
+                        </div>
+                        
+                        <!-- Participant Info -->
+                        <div class="mb-3 md:mb-4">
+                            <h4 class="font-semibold text-sm md:text-base" :class="isCompleted(participant.id) ? 'text-white' : 'text-gray-700'" x-text="participant.name"></h4>
+                            <p class="text-xs md:text-sm" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-500'" x-text="'Halaman ' + getJuzDetails(index + 1).pages"></p>
+                        </div>
+                        
+                        <!-- Juz Content -->
+                        <div class="mb-3 md:mb-4">
+                            <p class="text-xs md:text-sm font-medium" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-600'" x-text="getJuzDetails(index + 1).content"></p>
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="border-t pt-2 md:pt-3" :class="isCompleted(participant.id) ? 'border-orange-300' : 'border-gray-200'">
+                            <p class="text-xs" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-500'" x-text="getJuzDetails(index + 1).description"></p>
+                        </div>
+                        
+                        <!-- Status -->
+                        <div class="mt-3 md:mt-4 text-center">
+                            <span class="text-xs md:text-sm font-semibold" :class="isCompleted(participant.id) ? 'text-white' : 'text-gray-500'">
+                                <span x-show="isCompleted(participant.id)">✅ Sudah Selesai</span>
+                                <span x-show="!isCompleted(participant.id)">⏳ Belum Selesai</span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Tab Content: Rekap Bulanan -->
+        <div x-show="activeTab === 'monthly'" class="container mx-auto px-4 pb-8">
+            <!-- Month Selection -->
+            <div class="bg-white rounded-xl p-4 md:p-6 card-shadow mb-6">
+                <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+                    <label class="font-semibold text-gray-700 text-sm md:text-base">Pilih Bulan:</label>
+                    <select x-model="selectedMonth" @change="updateMonthlyData()" 
+                            class="border border-gray-300 rounded-lg px-3 py-2 md:px-4 md:py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm md:text-base">
+                        <template x-for="month in availableMonths" :key="month.value">
+                            <option :value="month.value" x-text="month.label"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Monthly Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+                <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
+                    <div class="flex items-center">
+                        <div class="bg-yellow-500 p-3 md:p-4 rounded-full mr-4 flex-shrink-0">
+                            <span class="text-white text-xl md:text-2xl">🏆</span>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-500 text-xs md:text-sm">Total Khatam Bulan Ini</h3>
+                            <p class="text-2xl md:text-3xl font-bold text-yellow-600" x-text="getMonthlyKhatam() + ' kali'"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
+                    <div class="flex items-center">
+                        <div class="bg-primary p-3 md:p-4 rounded-full mr-4 flex-shrink-0">
+                            <span class="text-white text-xl md:text-2xl">📊</span>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-500 text-xs md:text-sm">Total Partisipasi</h3>
+                            <p class="text-2xl md:text-3xl font-bold text-primary" x-text="getTotalMonthlyChecks()"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar View for Admin -->
+            <div x-show="isAdmin" class="bg-white rounded-xl card-shadow overflow-hidden mb-6">
+                <div class="p-4 md:p-6 border-b border-gray-200">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold text-gray-800">📅 Kalender Admin - Edit Progress Harian</h3>
+                            <p class="text-xs md:text-sm text-gray-600 mt-1">Klik tanggal untuk melihat dan edit progress peserta</p>
+                        </div>
+                        
+                        <!-- Calendar Month Navigation -->
+                        <div class="flex items-center space-x-4">
+                            <label class="font-semibold text-gray-700 text-sm">Bulan Kalender:</label>
+                            <select x-model="calendarSelectedMonth" @change="updateCalendarView()" 
+                                    class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm">
+                                <template x-for="month in availableMonths" :key="month.value">
+                                    <option :value="month.value" x-text="month.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 md:p-6">
+                    <!-- Calendar Header -->
+                    <div class="calendar-grid mb-2">
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Min</div>
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Sen</div>
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Sel</div>
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Rab</div>
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Kam</div>
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Jum</div>
+                        <div class="text-center font-semibold text-gray-700 py-2 text-xs md:text-sm">Sab</div>
+                    </div>
+                    
+                    <!-- Calendar Days -->
+                    <div class="calendar-grid">
+                        <template x-for="day in getCalendarDays()" :key="day.date">
+                            <div class="calendar-day" 
+                                 :class="{
+                                     'completed': day.isCompleted,
+                                     'today': day.isToday,
+                                     'other-month': day.isOtherMonth,
+                                     'disabled': day.isFuture
+                                 }"
+                                 @click="day.isOtherMonth || day.isFuture ? null : openDayEdit(day.date)"
+                                 x-text="day.day">
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <div class="mt-4 text-xs md:text-sm text-gray-600 space-y-2">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <span class="inline-flex items-center">
+                                <div class="w-3 h-3 bg-primary rounded mr-2"></div>
+                                Khatam (30/30)
+                            </span>
+                            <span class="inline-flex items-center">
+                                <div class="w-3 h-3 border-2 border-primary rounded mr-2"></div>
+                                Hari ini
+                            </span>
+                            <span class="inline-flex items-center">
+                                <div class="w-3 h-3 bg-gray-200 rounded mr-2"></div>
+                                Belum khatam
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500">
+                            <strong>Bulan saat ini:</strong> <span x-text="getCalendarMonthInfo()"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Progress Table -->
+            <div class="bg-white rounded-xl card-shadow overflow-hidden">
+                <div class="p-4 md:p-6 border-b border-gray-200">
+                    <h3 class="text-lg md:text-xl font-bold text-gray-800">Progress Peserta</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peserta</th>
+                                <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Centang</th>
+                                <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Persentase</th>
+                                <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress Bar</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="participant in participants" :key="participant.id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-3 md:px-6 py-4 whitespace-nowrap">
+                                        <div class="text-xs md:text-sm font-medium text-gray-900" x-text="participant.name"></div>
+                                    </td>
+                                    <td class="px-3 md:px-6 py-4 whitespace-nowrap">
+                                        <div class="text-xs md:text-sm text-gray-900" x-text="getParticipantMonthlyCount(participant.id) + '/' + getDaysInMonth()"></div>
+                                    </td>
+                                    <td class="px-3 md:px-6 py-4 whitespace-nowrap">
+                                        <div class="text-xs md:text-sm text-gray-900" x-text="Math.round((getParticipantMonthlyCount(participant.id) / getDaysInMonth()) * 100) + '%'"></div>
+                                    </td>
+                                    <td class="px-3 md:px-6 py-4 whitespace-nowrap">
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-primary h-2 rounded-full transition-all duration-500" 
+                                                 :style="'width: ' + Math.round((getParticipantMonthlyCount(participant.id) / getDaysInMonth()) * 100) + '%'"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Login Modal -->
+        <div x-show="showAdminLogin" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-xl p-6 md:p-8 max-w-md w-full card-shadow"
+                 @click.away="showAdminLogin = false">
+                <h3 class="text-xl md:text-2xl font-bold text-gray-800 mb-6">🔑 Admin Login</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <input x-model="adminCredentials.username" 
+                               type="text" 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 md:px-4 md:py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm md:text-base"
+                               placeholder="Masukkan username">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                        <input x-model="adminCredentials.password" 
+                               type="password" 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 md:px-4 md:py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm md:text-base"
+                               placeholder="Masukkan password"
+                               @keyup.enter="adminLogin()">
+                    </div>
+                </div>
+                
+                <div x-show="adminError" class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm" x-text="adminError"></div>
+                
+                <div class="flex space-x-4 mt-6">
+                    <button @click="showAdminLogin = false" 
+                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-300 text-sm md:text-base">
+                        Batal
+                    </button>
+                    <button @click="adminLogin()" 
+                            class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300 text-sm md:text-base">
+                        Login
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Day Edit Modal (Admin) -->
+        <div x-show="showDayEditModal" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-xl p-4 md:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto card-shadow"
+                 @click.away="showDayEditModal = false">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg md:text-xl font-bold text-gray-800">✏️ Edit Progress Tanggal <span x-text="formatEditDate()"></span></h3>
+                    <button @click="showDayEditModal = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+                        <span class="text-sm text-gray-600">Total yang sudah centang: <span class="font-bold text-primary" x-text="getEditDayCompleted()"></span>/30</span>
+                        <div class="flex space-x-2">
+                            <button @click="toggleAllParticipants(true)" class="text-xs px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all">
+                                ✅ Centang Semua
+                            </button>
+                            <button @click="toggleAllParticipants(false)" class="text-xs px-3 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all">
+                                ❌ Hapus Semua
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <template x-for="participant in participants" :key="participant.id">
+                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                            <span class="text-sm font-medium text-gray-700" x-text="participant.name"></span>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" 
+                                       :checked="isEditDayCompleted(participant.id)" 
+                                       @change="toggleEditDayParticipant(participant.id)"
+                                       class="mr-2 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded">
+                                <span class="text-xs" :class="isEditDayCompleted(participant.id) ? 'text-green-600' : 'text-gray-500'" x-text="isEditDayCompleted(participant.id) ? '✅' : '⏳'"></span>
+                            </label>
+                        </div>
+                    </template>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-6">
+                    <button @click="showDayEditModal = false" 
+                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-300">
+                        Batal
+                    </button>
+                    <button @click="saveDayEdit()" 
+                            class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function quranTracker() {
+            return {
+                // Data peserta
+                participants: [
+                    { id: 1, name: 'Ahmad' }, { id: 2, name: 'Fatimah' }, { id: 3, name: 'Abdullah' }, { id: 4, name: 'Khadijah' },
+                    { id: 5, name: 'Umar' }, { id: 6, name: 'Aisha' }, { id: 7, name: 'Ali' }, { id: 8, name: 'Zainab' },
+                    { id: 9, name: 'Yusuf' }, { id: 10, name: 'Maryam' }, { id: 11, name: 'Ibrahim' }, { id: 12, name: 'Hafsa' },
+                    { id: 13, name: 'Khalid' }, { id: 14, name: 'Ruqayyah' }, { id: 15, name: 'Hamza' }, { id: 16, name: 'Ummu Kulthum' },
+                    { id: 17, name: 'Bilal' }, { id: 18, name: 'Safiyyah' }, { id: 19, name: 'Salman' }, { id: 20, name: 'Sawdah' },
+                    { id: 21, name: 'Talhah' }, { id: 22, name: 'Maymunah' }, { id: 23, name: 'Zaid' }, { id: 24, name: 'Juwayriyyah' },
+                    { id: 25, name: 'Anas' }, { id: 26, name: 'Zaynab bint Jahsh' }, { id: 27, name: 'Mu\'adh' }, { id: 28, name: 'Ramlah' },
+                    { id: 29, name: 'Sa\'d' }, { id: 30, name: 'Habibah' }
+                ],
+
+                // Detail setiap juz
+                juzDetails: {
+                    1: { name: "Alif Lam Mim", content: "Al-Fatihah - Al-Baqarah:141", pages: "1-21", description: "Pembukaan Al-Qur'an dengan Al-Fatihah yang merupakan inti dari seluruh Al-Qur'an, dilanjutkan dengan awal Surah Al-Baqarah tentang dasar-dasar keimanan." },
+                    2: { name: "Sayaqulu", content: "Al-Baqarah:142-253", pages: "22-41", description: "Kisah pergantian kiblat, hukum qishas, puasa Ramadhan, haji, dan berbagai ketentuan syariat fundamental." },
+                    3: { name: "Tilkal Rusul", content: "Al-Baqarah:254 - Ali Imran:91", pages: "42-61", description: "Kisah para rasul, ayat kursi, dan awal Surah Ali Imran tentang kelahiran Maryam dan Isa AS." },
+                    4: { name: "Lan Tanalu", content: "Ali Imran:92 - An-Nisa:23", pages: "62-81", description: "Anjuran berinfaq, perang Uhud, dan awal Surah An-Nisa tentang hak-hak wanita dan yatim." },
+                    5: { name: "Wal Muhsanat", content: "An-Nisa:24-147", pages: "82-102", description: "Hukum pernikahan, waris, kepemimpinan, dan perintah taat kepada Allah dan Rasul." },
+                    6: { name: "La Yuhibbullah", content: "An-Nisa:148 - Al-Maidah:81", pages: "103-121", description: "Larangan berbuat zalim, hukum halal-haram, dan kisah Bani Israil yang ingkar." },
+                    7: { name: "Wa Idza Sami'u", content: "Al-Maidah:82 - Al-An'am:110", pages: "122-142", description: "Pujian untuk ahli kitab yang beriman dan dalil-dalil tentang keesaan Allah." },
+                    8: { name: "Wa Lau Annana", content: "Al-An'am:111 - Al-A'raf:87", pages: "143-162", description: "Bantahan terhadap orang musyrik dan kisah para nabi dalam berdakwah." },
+                    9: { name: "Qalal Mala", content: "Al-A'raf:88 - Al-Anfal:40", pages: "163-182", description: "Lanjutan kisah para nabi dan perang Badr sebagai pertolongan Allah." },
+                    10: { name: "Wa A'lamu", content: "Al-Anfal:41 - At-Taubah:92", pages: "183-202", description: "Hukum pembagian ghanimah, perang Tabuk, dan sikap terhadap orang munafik." },
+                    11: { name: "Ya'tadhiruna", content: "At-Taubah:93 - Yunus:109", pages: "203-222", description: "Sikap terhadap orang yang tidak ikut jihad dan kisah Nabi Yunus AS." },
+                    12: { name: "Wa Ma Min Dabbah", content: "Hud:1 - Yusuf:52", pages: "223-242", description: "Kisah Nabi Hud, Saleh, Ibrahim, Luth, Syu'aib dan awal kisah Yusuf AS." },
+                    13: { name: "Wa Ma Ubarri'u", content: "Yusuf:53 - Ibrahim:52", pages: "243-262", description: "Lanjutan kisah Yusuf AS di Mesir dan kisah Ibrahim AS dengan kaumnya." },
+                    14: { name: "Rubama", content: "Al-Hijr:1 - An-Nahl:128", pages: "263-282", description: "Azab untuk kaum yang mendustakan dan nikmat-nikmat Allah yang tak terhitung." },
+                    15: { name: "Subhanallahi", content: "Al-Isra:1 - Al-Kahf:74", pages: "283-302", description: "Isra Mi'raj, kisah Ashab al-Kahf, dan Dzulqarnain." },
+                    16: { name: "Qala Alam", content: "Al-Kahf:75 - Taha:135", pages: "303-322", description: "Kisah Musa dan Khidr, serta Musa AS dengan Fir'aun." },
+                    17: { name: "Aqtarabu", content: "Al-Anbiya:1 - Al-Hajj:78", pages: "323-342", description: "Kisah para nabi dan keutamaan ibadah haji." },
+                    18: { name: "Qad Aflaha", content: "Al-Mu'minun:1 - Al-Furqan:20", pages: "343-362", description: "Sifat-sifat orang mukmin dan kritik terhadap orang kafir." },
+                    19: { name: "Wa Qalalladzina", content: "Al-Furqan:21 - An-Naml:55", pages: "363-382", description: "Bantahan terhadap orang kafir dan kisah Nabi Sulaiman AS." },
+                    20: { name: "A Man Khalaq", content: "An-Naml:56 - Al-Ankabut:45", pages: "383-402", description: "Kisah Luth AS dan nasihat untuk beribadah kepada Allah." },
+                    21: { name: "Utlu Ma Uhiya", content: "Al-Ankabut:46 - Al-Ahzab:30", pages: "403-422", description: "Ujian bagi orang beriman dan perang Ahzab." },
+                    22: { name: "Wa Man Yaqnut", content: "Al-Ahzab:31 - Yasin:27", pages: "423-442", description: "Kedudukan istri-istri Nabi dan awal Surah Yasin." },
+                    23: { name: "Wa Mali", content: "Yasin:28 - Az-Zumar:31", pages: "443-462", description: "Keutamaan Surah Yasin dan sifat-sifat Al-Qur'an." },
+                    24: { name: "Fa Man Azlam", content: "Az-Zumar:32 - Fussilat:46", pages: "463-482", description: "Balasan bagi orang yang berbuat zalim dan tanda-tanda kekuasaan Allah." },
+                    25: { name: "Ilaih Yuraddu", content: "Fussilat:47 - Al-Jatsiyah:37", pages: "483-502", description: "Semua urusan dikembalikan kepada Allah dan hari pembalasan." },
+                    26: { name: "Ha Mim", content: "Al-Ahqaf:1 - Adz-Dzariyat:30", pages: "503-522", description: "Awal surah-surah Ha Mim dan janji Allah kepada Ibrahim AS." },
+                    27: { name: "Qala Fa Ma", content: "Adz-Dzariyat:31 - Al-Hadid:29", pages: "523-542", description: "Lanjutan kisah Ibrahim AS dan keutamaan beriman kepada Allah dan Rasul-Nya." },
+                    28: { name: "Qad Sami'allah", content: "Al-Mujadilah:1 - At-Tahrim:12", pages: "543-562", description: "Hukum zhihar, etika bermasyarakat, dan teladan dari istri-istri yang shalihah." },
+                    29: { name: "Tabarakallahi", content: "Al-Mulk:1 - Al-Mursalat:50", pages: "563-582", description: "Kebesaran Allah dan ancaman bagi orang yang mendustakan hari pembalasan." },
+                    30: { name: "Amma Yatasa'alun", content: "An-Naba:1 - An-Nas:6", pages: "583-604", description: "Hari kiamat, surga, neraka, dan perlindungan Allah dari godaan syaitan." }
+                },
+
+                // State management
+                activeTab: 'checklist',
+                todayChecks: {},
+                monthlyData: {},
+                selectedMonth: '',
+                calendarSelectedMonth: '', // Separate month selection for calendar
+                availableMonths: [],
+                
+                // Admin
+                isAdmin: false,
+                showAdminLogin: false,
+                showDayEditModal: false,
+                editingDate: '',
+                adminCredentials: { username: '', password: '' },
+                adminError: '',
+                
+                // Announcement
+                showAnnouncement: true,
+                
+                // Countdown
+                countdown: { hours: 0, minutes: 0, seconds: 0 },
+                countdownText: '',
+                countdownInterval: null,
+                
+                // Program start date - Juli 2025
+                programStartDate: new Date('2025-07-01'),
+
+                init() {
+                    this.checkAnnouncementStatus();
+                    this.loadData();
+                    this.generateAvailableMonths();
+                    this.selectedMonth = this.getCurrentMonth();
+                    this.calendarSelectedMonth = this.getCurrentMonth(); // Initialize calendar month
+                    this.updateMonthlyData();
+                    this.startCountdown();
+                    this.scheduleReset();
+                },
+
+                checkAnnouncementStatus() {
+                    const announcementSeen = localStorage.getItem('announcementSeen');
+                    if (announcementSeen) {
+                        this.showAnnouncement = false;
+                    }
+                },
+
+                closeAnnouncement() {
+                    this.showAnnouncement = false;
+                    localStorage.setItem('announcementSeen', 'true');
+                },
+
+                loadData() {
+                    const saved = localStorage.getItem('quranTrackerData');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.todayChecks = data.todayChecks || {};
+                        this.monthlyData = data.monthlyData || {};
+                    }
+                },
+
+                saveData() {
+                    const data = {
+                        todayChecks: this.todayChecks,
+                        monthlyData: this.monthlyData
+                    };
+                    localStorage.setItem('quranTrackerData', JSON.stringify(data));
+                },
+
+                getCurrentDate() {
+                    return new Date().toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                },
+
+                getCurrentMonth() {
+                    return new Date().toISOString().slice(0, 7);
+                },
+
+                getDaysInMonth(monthString = null) {
+                    const targetMonth = monthString || this.selectedMonth;
+                    if (!targetMonth) return 31;
+                    const [year, month] = targetMonth.split('-');
+                    return new Date(year, month, 0).getDate();
+                },
+
+                getDaysSinceStart() {
+                    const today = new Date();
+                    const diffTime = today - this.programStartDate;
+                    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                },
+
+                getRotatedParticipants() {
+                    const daysSinceStart = this.getDaysSinceStart();
+                    const rotated = [...this.participants];
+                    
+                    // Rotate array based on days passed
+                    for (let i = 0; i < daysSinceStart % 30; i++) {
+                        rotated.unshift(rotated.pop());
+                    }
+                    
+                    return rotated;
+                },
+
+                getJuzDetails(juzNumber) {
+                    return this.juzDetails[juzNumber] || { 
+                        name: 'Unknown', 
+                        content: 'Unknown', 
+                        pages: 'Unknown',
+                        description: 'Deskripsi tidak tersedia'
+                    };
+                },
+
+                isCompleted(participantId) {
+                    const today = this.getTodayKey();
+                    return this.todayChecks[today]?.includes(participantId) || false;
+                },
+
+                toggleCheck(participantId) {
+                    const today = this.getTodayKey();
+                    
+                    if (!this.todayChecks[today]) {
+                        this.todayChecks[today] = [];
+                    }
+                    
+                    const index = this.todayChecks[today].indexOf(participantId);
+                    if (index > -1) {
+                        this.todayChecks[today].splice(index, 1);
+                    } else {
+                        this.todayChecks[today].push(participantId);
+                    }
+                    
+                    this.updateMonthlyRecord();
+                    this.saveData();
+                },
+
+                getTodayKey() {
+                    return new Date().toISOString().slice(0, 10);
+                },
+
+                getTodayCompleted() {
+                    const today = this.getTodayKey();
+                    return this.todayChecks[today]?.length || 0;
+                },
+
+                updateMonthlyRecord() {
+                    const month = this.getCurrentMonth();
+                    const today = this.getTodayKey();
+                    
+                    if (!this.monthlyData[month]) {
+                        this.monthlyData[month] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                    }
+                    
+                    // Update participant monthly counts
+                    this.participants.forEach(participant => {
+                        if (!this.monthlyData[month].participantChecks[participant.id]) {
+                            this.monthlyData[month].participantChecks[participant.id] = [];
+                        }
+                        
+                        const checks = this.monthlyData[month].participantChecks[participant.id];
+                        const isCompleted = this.isCompleted(participant.id);
+                        const alreadyRecorded = checks.includes(today);
+                        
+                        if (isCompleted && !alreadyRecorded) {
+                            checks.push(today);
+                        } else if (!isCompleted && alreadyRecorded) {
+                            const index = checks.indexOf(today);
+                            checks.splice(index, 1);
+                        }
+                    });
+                    
+                    // Update khatam tracking
+                    const completedToday = this.getTodayCompleted();
+                    const khatamDays = this.monthlyData[month].khatamDays;
+                    const isKhatamDay = khatamDays.includes(today);
+                    
+                    if (completedToday === 30 && !isKhatamDay) {
+                        khatamDays.push(today);
+                    } else if (completedToday < 30 && isKhatamDay) {
+                        const index = khatamDays.indexOf(today);
+                        khatamDays.splice(index, 1);
+                    }
+                },
+
+                generateAvailableMonths() {
+                    const months = [];
+                    const currentDate = new Date();
+                    const startDate = new Date('2025-07-01'); // Mulai dari Juli 2025
+                    
+                    // Generate dari Juli 2025 sampai bulan saat ini + 6 bulan ke depan
+                    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 6, 1);
+                    
+                    let tempDate = new Date(startDate);
+                    while (tempDate <= endDate) {
+                        const monthKey = tempDate.toISOString().slice(0, 7);
+                        const monthLabel = tempDate.toLocaleDateString('id-ID', { 
+                            year: 'numeric', 
+                            month: 'long' 
+                        });
+                        
+                        months.push({ value: monthKey, label: monthLabel });
+                        tempDate.setMonth(tempDate.getMonth() + 1);
+                    }
+                    
+                    this.availableMonths = months;
+                },
+
+                updateMonthlyData() {
+                    // Auto-add current month if not exists
+                    const currentMonth = this.getCurrentMonth();
+                    if (!this.monthlyData[currentMonth]) {
+                        this.monthlyData[currentMonth] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                        this.saveData();
+                    }
+                },
+
+                updateCalendarView() {
+                    // Method to trigger calendar re-render when month changes
+                },
+
+                getParticipantMonthlyCount(participantId) {
+                    const monthData = this.monthlyData[this.selectedMonth];
+                    if (!monthData || !monthData.participantChecks[participantId]) {
+                        return 0;
+                    }
+                    return monthData.participantChecks[participantId].length;
+                },
+
+                getMonthlyKhatam() {
+                    const monthData = this.monthlyData[this.selectedMonth];
+                    return monthData ? monthData.khatamDays.length : 0;
+                },
+
+                getTotalMonthlyChecks() {
+                    const monthData = this.monthlyData[this.selectedMonth];
+                    if (!monthData) return 0;
+                    
+                    let total = 0;
+                    Object.values(monthData.participantChecks).forEach(checks => {
+                        total += checks.length;
+                    });
+                    return total;
+                },
+
+                getCalendarMonthInfo() {
+                    if (!this.calendarSelectedMonth) return '';
+                    const [year, month] = this.calendarSelectedMonth.split('-');
+                    const date = new Date(year, month - 1, 1);
+                    const daysInMonth = this.getDaysInMonth(this.calendarSelectedMonth);
+                    return `${date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} (${daysInMonth} hari)`;
+                },
+
+                // Calendar functions
+                getCalendarDays() {
+                    if (!this.calendarSelectedMonth) return [];
+                    
+                    const [year, month] = this.calendarSelectedMonth.split('-');
+                    const firstDay = new Date(year, month - 1, 1);
+                    const lastDay = new Date(year, month, 0);
+                    const daysInMonth = lastDay.getDate();
+                    const startDay = firstDay.getDay(); // 0 = Sunday
+                    
+                    const days = [];
+                    const today = this.getTodayKey();
+                    const currentDate = new Date();
+                    
+                    // Add empty cells for days before month starts
+                    for (let i = 0; i < startDay; i++) {
+                        const prevMonthDate = new Date(year, month - 1, -startDay + i + 1);
+                        days.push({
+                            day: prevMonthDate.getDate(),
+                            date: prevMonthDate.toISOString().slice(0, 10),
+                            isOtherMonth: true,
+                            isToday: false,
+                            isCompleted: false,
+                            isFuture: false
+                        });
+                    }
+                    
+                    // Add days of current month
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const date = new Date(year, month - 1, day);
+                        const dateKey = date.toISOString().slice(0, 10);
+                        const dayCompleted = this.todayChecks[dateKey]?.length || 0;
+                        const isFuture = date > currentDate;
+                        
+                        days.push({
+                            day: day,
+                            date: dateKey,
+                            isOtherMonth: false,
+                            isToday: dateKey === today,
+                            isCompleted: dayCompleted === 30,
+                            isFuture: isFuture
+                        });
+                    }
+                    
+                    // Fill remaining cells with next month
+                    const remainingCells = 42 - days.length; // 6 rows × 7 days
+                    for (let i = 1; i <= remainingCells; i++) {
+                        const nextMonthDate = new Date(year, month, i);
+                        days.push({
+                            day: nextMonthDate.getDate(),
+                            date: nextMonthDate.toISOString().slice(0, 10),
+                            isOtherMonth: true,
+                            isToday: false,
+                            isCompleted: false,
+                            isFuture: false
+                        });
+                    }
+                    
+                    return days;
+                },
+
+                // Admin functions
+                adminLogin() {
+                    if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
+                        this.isAdmin = true;
+                        this.showAdminLogin = false;
+                        this.adminError = '';
+                        this.adminCredentials = { username: '', password: '' };
+                    } else {
+                        this.adminError = 'Username atau password salah!';
+                    }
+                },
+
+                logout() {
+                    this.isAdmin = false;
+                },
+
+                openDayEdit(date) {
+                    this.editingDate = date;
+                    this.showDayEditModal = true;
+                },
+
+                formatEditDate() {
+                    if (!this.editingDate) return '';
+                    return new Date(this.editingDate + 'T12:00:00').toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                },
+
+                isEditDayCompleted(participantId) {
+                    if (!this.editingDate) return false;
+                    return this.todayChecks[this.editingDate]?.includes(participantId) || false;
+                },
+
+                getEditDayCompleted() {
+                    if (!this.editingDate) return 0;
+                    return this.todayChecks[this.editingDate]?.length || 0;
+                },
+
+                toggleEditDayParticipant(participantId) {
+                    if (!this.editingDate) return;
+                    
+                    if (!this.todayChecks[this.editingDate]) {
+                        this.todayChecks[this.editingDate] = [];
+                    }
+                    
+                    const index = this.todayChecks[this.editingDate].indexOf(participantId);
+                    if (index > -1) {
+                        this.todayChecks[this.editingDate].splice(index, 1);
+                    } else {
+                        this.todayChecks[this.editingDate].push(participantId);
+                    }
+                },
+
+                toggleAllParticipants(checked) {
+                    if (!this.editingDate) return;
+                    
+                    if (checked) {
+                        this.todayChecks[this.editingDate] = this.participants.map(p => p.id);
+                    } else {
+                        this.todayChecks[this.editingDate] = [];
+                    }
+                },
+
+                saveDayEdit() {
+                    this.updateMonthlyRecordForDate(this.editingDate);
+                    this.saveData();
+                    this.showDayEditModal = false;
+                    this.editingDate = '';
+                },
+
+                updateMonthlyRecordForDate(date) {
+                    const month = date.slice(0, 7);
+                    
+                    if (!this.monthlyData[month]) {
+                        this.monthlyData[month] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                    }
+                    
+                    // Update participant monthly counts for specific date
+                    this.participants.forEach(participant => {
+                        if (!this.monthlyData[month].participantChecks[participant.id]) {
+                            this.monthlyData[month].participantChecks[participant.id] = [];
+                        }
+                        
+                        const checks = this.monthlyData[month].participantChecks[participant.id];
+                        const isCompleted = this.todayChecks[date]?.includes(participant.id) || false;
+                        const alreadyRecorded = checks.includes(date);
+                        
+                        if (isCompleted && !alreadyRecorded) {
+                            checks.push(date);
+                        } else if (!isCompleted && alreadyRecorded) {
+                            const index = checks.indexOf(date);
+                            checks.splice(index, 1);
+                        }
+                    });
+                    
+                    // Update khatam tracking for specific date
+                    const completedOnDate = this.todayChecks[date]?.length || 0;
+                    const khatamDays = this.monthlyData[month].khatamDays;
+                    const isKhatamDay = khatamDays.includes(date);
+                    
+                    if (completedOnDate === 30 && !isKhatamDay) {
+                        khatamDays.push(date);
+                    } else if (completedOnDate < 30 && isKhatamDay) {
+                        const index = khatamDays.indexOf(date);
+                        khatamDays.splice(index, 1);
+                    }
+                },
+
+                // Countdown functions
+                startCountdown() {
+                    this.updateCountdown();
+                    this.countdownInterval = setInterval(() => {
+                        this.updateCountdown();
+                    }, 1000);
+                },
+
+                updateCountdown() {
+                    const now = new Date();
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(0, 0, 0, 0);
+                    
+                    const diff = tomorrow - now;
+                    
+                    this.countdown.hours = Math.floor(diff / (1000 * 60 * 60));
+                    this.countdown.minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    this.countdown.seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    if (this.countdown.hours < 1) {
+                        this.countdownText = `Reset dalam ${this.countdown.minutes} menit ${this.countdown.seconds} detik`;
+                    } else {
+                        this.countdownText = `Reset dalam ${this.countdown.hours} jam ${this.countdown.minutes} menit`;
+                    }
+                },
+
+                formatCountdown() {
+                    return `${String(this.countdown.hours).padStart(2, '0')}:${String(this.countdown.minutes).padStart(2, '0')}:${String(this.countdown.seconds).padStart(2, '0')}`;
+                },
+
+                scheduleReset() {
+                    const now = new Date();
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(0, 0, 0, 0);
+                    
+                    const timeUntilReset = tomorrow - now;
+                    
+                    setTimeout(() => {
+                        this.performReset();
+                        // Schedule next reset
+                        this.scheduleReset();
+                    }, timeUntilReset);
+                },
+
+                performReset() {
+                    // Reset today's checks but keep monthly data
+                    this.todayChecks = {};
+                    this.saveData();
+                    console.log('Daily reset performed at:', new Date().toLocaleString());
+                }
+            }
+        }
+    </script>
+</body>
+</html>
