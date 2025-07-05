@@ -7,95 +7,21 @@
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, onValue, push, update, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    <!-- Supabase SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // Supabase Configuration - GANTI DENGAN CREDENTIALS ANDA
+        const SUPABASE_URL = 'https://avbfccjifnptszchabjh.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2YmZjY2ppZm5wdHN6Y2hhYmpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2OTQyODMsImV4cCI6MjA2NzI3MDI4M30.Al8QBt2khiS35uG5IkGIJrLtAd1niWUFAbcsx_pBEgU'
         
-        // Firebase configuration - GANTI DENGAN CONFIG FIREBASE ANDA YANG BENAR
-        const firebaseConfig = {
-            apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
-            authDomain: "odoj-halaqah1.firebaseapp.com",
-            databaseURL: "https://odoj-halaqah1-default-rtdb.firebaseio.com/",
-            projectId: "odoj-halaqah1",
-            storageBucket: "odoj-halaqah1.firebasestorage.app",
-            messagingSenderId: "268720571471",
-            appId: "1:268720571471:web:7c534d4996873fbbaed63a"
-        };
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
         
-        console.log('🔥 Starting Firebase initialization...');
-        console.log('📋 Config:', {
-            hasApiKey: !!firebaseConfig.apiKey,
-            hasAuthDomain: !!firebaseConfig.authDomain,
-            hasDatabaseURL: !!firebaseConfig.databaseURL,
-            hasProjectId: !!firebaseConfig.projectId,
-            databaseURL: firebaseConfig.databaseURL
-        });
+        // Make Supabase available globally
+        window.supabaseClient = supabase
         
-        try {
-            // Validate required fields
-            if (!firebaseConfig.databaseURL) {
-                throw new Error('databaseURL is required for Realtime Database');
-            }
-            
-            if (!firebaseConfig.databaseURL.includes('firebasedatabase.app')) {
-                throw new Error('databaseURL format seems incorrect. Should be: https://PROJECT-ID-default-rtdb.REGION.firebasedatabase.app/');
-            }
-            
-            // Initialize Firebase
-            console.log('📱 Initializing Firebase app...');
-            const app = initializeApp(firebaseConfig);
-            
-            console.log('🗄️ Getting database instance...');
-            const database = getDatabase(app);
-            
-            // Test database connection immediately
-            console.log('🔍 Testing database connection...');
-            const testRef = ref(database, '.info/connected');
-            
-            // Make Firebase available globally
-            window.firebase = { 
-                app,
-                database, 
-                ref, 
-                set, 
-                get, 
-                onValue, 
-                push, 
-                update, 
-                remove,
-                initialized: true,
-                error: null,
-                config: firebaseConfig
-            };
-            
-            console.log('✅ Firebase initialized successfully');
-            
-            // Monitor connection status
-            onValue(testRef, (snapshot) => {
-                const connected = snapshot.val();
-                console.log('🔗 Firebase connection status:', connected ? 'CONNECTED' : 'DISCONNECTED');
-                if (window.firebaseConnectionCallback) {
-                    window.firebaseConnectionCallback(connected);
-                }
-            });
-            
-        } catch (error) {
-            console.error('❌ Firebase initialization failed:', error);
-            console.error('🔍 Error details:', {
-                name: error.name,
-                message: error.message,
-                code: error.code,
-                stack: error.stack
-            });
-            
-            window.firebase = {
-                initialized: false,
-                error: error.message,
-                errorCode: error.code,
-                config: firebaseConfig
-            };
-        }
+        console.log('🟢 Supabase initialized successfully')
     </script>
     
     <style>
@@ -279,7 +205,27 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Connection status */
+        /* Edit participant modal */
+        .edit-participant-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .juz-card:hover .edit-participant-btn {
+            opacity: 1;
+        }
+
         .connection-status {
             position: fixed;
             top: 20px;
@@ -306,27 +252,6 @@
             background: #f59e0b;
             color: white;
         }
-
-        /* Edit participant modal */
-        .edit-participant-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(0,0,0,0.5);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 12px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .juz-card:hover .edit-participant-btn {
-            opacity: 1;
-        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -337,7 +262,6 @@
             <div class="bg-white rounded-lg p-6 text-center">
                 <div class="spinner mx-auto mb-4"></div>
                 <p class="text-gray-600">Memuat data...</p>
-                <p x-show="loadingMessage" class="text-sm text-gray-500 mt-2" x-text="loadingMessage"></p>
             </div>
         </div>
 
@@ -349,12 +273,12 @@
                 'status-connecting': connectionStatus === 'connecting'
              }"
              x-show="connectionStatus !== 'online'">
-            <span x-show="connectionStatus === 'connecting'">🔄 Menghubungkan...</span>
+            <span x-show="connectionStatus === 'connecting'">🔄 Menghubungkan Supabase...</span>
             <span x-show="connectionStatus === 'offline'">❌ Mode Offline</span>
         </div>
 
-        <!-- Firebase Configuration Modal -->
-        <div x-show="showFirebaseConfig" 
+        <!-- Supabase Error Modal -->
+        <div x-show="showSupabaseError" 
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0"
              x-transition:enter-end="opacity-100"
@@ -364,51 +288,22 @@
              class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 modal-backdrop p-4">
             <div class="bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full card-shadow">
                 <div class="text-center">
-                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🔧 Konfigurasi Firebase Diperlukan</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🔧 Konfigurasi Supabase</h2>
                     <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg mb-6 text-left">
-                        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Penting!</h3>
+                        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Setup Diperlukan!</h3>
                         <div class="text-sm text-yellow-700 space-y-2">
-                            <p>Firebase belum dikonfigurasi dengan benar. Untuk mengaktifkan sinkronisasi realtime:</p>
+                            <p>Untuk multi-device sync, ganti credentials Supabase:</p>
                             <ol class="list-decimal list-inside space-y-1 ml-2">
-                                <li>Buat project baru di <strong>Firebase Console</strong></li>
-                                <li>Aktifkan <strong>Realtime Database</strong></li>
-                                <li>Salin config dan ganti di kode JavaScript</li>
-                                <li>Pastikan <strong>databaseURL</strong> tersedia</li>
+                                <li>Buat project di <strong>supabase.com</strong></li>
+                                <li>Jalankan SQL script untuk membuat tabel</li>
+                                <li>Ganti <strong>SUPABASE_URL</strong> dan <strong>SUPABASE_ANON_KEY</strong></li>
+                                <li>Refresh halaman</li>
                             </ol>
                         </div>
                     </div>
                     <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-6 text-left">
-                        <h3 class="font-semibold text-red-800 mb-2">🚨 Error Detail:</h3>
-                        <div class="text-sm text-red-700 space-y-1">
-                            <p><strong>Error:</strong> <span x-text="firebaseError || 'Firebase tidak dapat diinisialisasi'"></span></p>
-                            <p x-show="firebaseErrorCode"><strong>Code:</strong> <span x-text="firebaseErrorCode"></span></p>
-                            <div x-show="firebaseConfig" class="mt-2">
-                                <p><strong>Config Status:</strong></p>
-                                <ul class="list-disc list-inside ml-2 space-y-1">
-                                    <li>API Key: <span x-text="firebaseConfig?.hasApiKey ? '✅ Ada' : '❌ Tidak ada'"></span></li>
-                                    <li>Database URL: <span x-text="firebaseConfig?.hasDatabaseURL ? '✅ Ada' : '❌ Tidak ada'"></span></li>
-                                    <li>Project ID: <span x-text="firebaseConfig?.hasProjectId ? '✅ Ada' : '❌ Tidak ada'"></span></li>
-                                </ul>
-                                <p class="mt-2"><strong>Database URL:</strong> <span class="text-xs break-all" x-text="firebaseConfig?.databaseURL || 'Tidak tersedia'"></span></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6 text-left">
-                        <h3 class="font-semibold text-blue-800 mb-2">🔧 Langkah Perbaikan:</h3>
-                        <ol class="list-decimal list-inside space-y-1 text-sm text-blue-700">
-                            <li>Buka <strong>Firebase Console</strong> → Project Settings</li>
-                            <li>Pastikan <strong>Realtime Database</strong> sudah dibuat (bukan Firestore)</li>
-                            <li>Copy config lengkap dari "Your apps" section</li>
-                            <li>Pastikan <strong>databaseURL</strong> ada dan format benar</li>
-                            <li>Set Database Rules untuk testing:
-                                <pre class="bg-blue-100 p-2 rounded mt-1 text-xs">{
-  "rules": {
-    ".read": true,
-    ".write": true
-  }
-}</pre>
-                            </li>
-                        </ol>
+                        <h3 class="font-semibold text-red-800 mb-2">🚨 Error:</h3>
+                        <p class="text-sm text-red-700" x-text="supabaseError"></p>
                     </div>
                     <button @click="continueOffline()" 
                             class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
@@ -764,14 +659,32 @@
                         </button>
                     </div>
 
-                    <!-- Firebase Status -->
+                    <!-- Data Info -->
                     <div class="border border-blue-200 rounded-lg p-4 md:p-6 bg-blue-50">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-3">🔥 Status Firebase</h4>
+                        <h4 class="text-lg font-semibold text-blue-800 mb-3">💾 Informasi Data</h4>
                         <div class="space-y-2 text-sm">
-                            <p><strong>Koneksi:</strong> <span :class="connectionStatus === 'online' ? 'text-green-600' : 'text-red-600'" x-text="connectionStatus === 'online' ? 'Terhubung' : 'Terputus'"></span></p>
-                            <p><strong>Sinkronisasi:</strong> <span x-text="firebaseConnected ? 'Aktif' : 'Mode Offline'" :class="firebaseConnected ? 'text-green-600' : 'text-orange-600'"></span></p>
+                            <p><strong>Status Koneksi:</strong> 
+                                <span :class="supabaseConnected ? 'text-green-600' : 'text-orange-600'" 
+                                      x-text="supabaseConnected ? '🟢 Supabase Connected' : '🟠 Offline Mode'"></span>
+                            </p>
+                            <p><strong>Penyimpanan:</strong> 
+                                <span x-text="supabaseConnected ? 'Supabase + Local Backup' : 'Local Storage Browser'"></span>
+                            </p>
+                            <p><strong>Real-time Sync:</strong> 
+                                <span :class="supabaseConnected ? 'text-green-600' : 'text-red-600'" 
+                                      x-text="supabaseConnected ? '✅ Aktif' : '❌ Nonaktif'"></span>
+                            </p>
                             <p><strong>Total Peserta:</strong> <span x-text="participants.length"></span></p>
-                            <p x-show="firebaseError"><strong>Error:</strong> <span class="text-red-600" x-text="firebaseError"></span></p>
+                            <div x-show="supabaseConnected" class="mt-2 p-2 bg-green-50 rounded">
+                                <p class="text-green-700 text-xs">
+                                    <strong>🔄 Multi-Device:</strong> Centang dari device manapun akan sync otomatis ke semua device lain.
+                                </p>
+                            </div>
+                            <div x-show="!supabaseConnected" class="mt-2 p-2 bg-orange-50 rounded">
+                                <p class="text-orange-700 text-xs">
+                                    <strong>📱 Single Device:</strong> Data tersimpan lokal di browser ini saja. Setup Supabase untuk multi-device sync.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -845,26 +758,21 @@
     <script>
         function quranTracker() {
             return {
-                // Firebase connection
-                firebaseConnected: false,
+                // Connection state
                 connectionStatus: 'connecting', // connecting, online, offline
-                firebaseError: null,
-                firebaseErrorCode: null,
-                firebaseConfig: null,
+                supabaseConnected: false,
+                supabaseError: null,
+                showSupabaseError: false,
                 
                 // UI state
                 isLoading: false,
-                loadingMessage: '',
-                showFirebaseConfig: false,
+                showSaveIndicator: false,
                 showAnnouncement: false,
                 showEditParticipant: false,
                 editingParticipant: { id: null, name: '' },
                 
                 // Data peserta
-                participants: [],
-                
-                // Default participants jika Firebase belum dikonfigurasi
-                defaultParticipants: [
+                participants: [
                     { id: 1, name: 'Ahmad' }, { id: 2, name: 'Fatimah' }, { id: 3, name: 'Abdullah' }, { id: 4, name: 'Khadijah' },
                     { id: 5, name: 'Umar' }, { id: 6, name: 'Aisha' }, { id: 7, name: 'Ali' }, { id: 8, name: 'Zainab' },
                     { id: 9, name: 'Yusuf' }, { id: 10, name: 'Maryam' }, { id: 11, name: 'Ibrahim' }, { id: 12, name: 'Hafsa' },
@@ -928,325 +836,283 @@
 
                 async init() {
                     this.isLoading = true;
-                    this.loadingMessage = 'Menginisialisasi aplikasi...';
                     
                     try {
-                        // Check Firebase initialization status
-                        this.loadingMessage = 'Mengecek koneksi Firebase...';
-                        await this.checkFirebaseConnection();
+                        // Test Supabase connection
+                        await this.testSupabaseConnection();
                         
-                        // Load participants
-                        this.loadingMessage = 'Memuat data peserta...';
-                        await this.loadParticipants();
+                        // Load data from Supabase
+                        await this.loadDataFromSupabase();
                         
-                        // Load data
-                        this.loadingMessage = 'Memuat data progress...';
-                        await this.loadData();
+                        // Setup real-time subscriptions
+                        this.setupRealtimeListeners();
                         
-                        // Check announcement
-                        this.checkAnnouncementStatus();
-                        
-                        // Setup months
-                        this.generateAvailableMonths();
-                        this.selectedMonth = this.getCurrentMonth();
-                        this.updateMonthlyData();
-                        
-                        // Setup realtime listeners if Firebase connected
-                        if (this.firebaseConnected) {
-                            this.loadingMessage = 'Menyiapkan sinkronisasi realtime...';
-                            this.setupRealtimeListeners();
-                        }
-                        
-                        this.loadingMessage = 'Aplikasi siap digunakan!';
+                        this.connectionStatus = 'online';
+                        this.supabaseConnected = true;
                         
                     } catch (error) {
-                        console.error('Initialization error:', error);
-                        this.firebaseError = error.message;
+                        console.error('Supabase connection failed:', error);
+                        this.supabaseError = error.message;
                         this.connectionStatus = 'offline';
                         
-                        // Load data from localStorage as fallback
+                        // Fallback to localStorage
                         this.loadDataFromLocal();
-                        this.participants = [...this.defaultParticipants];
                         
-                        // Show Firebase config modal if needed
-                        if (error.message.includes('Firebase') || error.message.includes('databaseURL')) {
-                            this.showFirebaseConfig = true;
+                        // Show error modal if it's a config issue
+                        if (error.message.includes('supabase.co') || error.message.includes('credentials')) {
+                            this.showSupabaseError = true;
                         }
                     }
+                    
+                    // Check announcement
+                    this.checkAnnouncementStatus();
+                    
+                    // Setup months
+                    this.generateAvailableMonths();
+                    this.selectedMonth = this.getCurrentMonth();
+                    this.updateMonthlyData();
                     
                     setTimeout(() => {
                         this.isLoading = false;
-                        this.loadingMessage = '';
-                    }, 1000);
+                    }, 500);
                 },
 
-                async checkFirebaseConnection() {
-                    return new Promise((resolve, reject) => {
-                        let attempts = 0;
-                        const maxAttempts = 50; // 5 seconds
-                        
-                        const checkFirebase = () => {
-                            attempts++;
-                            console.log(`🔍 Checking Firebase availability (attempt ${attempts}/${maxAttempts})`);
-                            
-                            if (window.firebase) {
-                                console.log('📦 Firebase object found:', window.firebase);
-                                
-                                if (window.firebase.initialized) {
-                                    console.log('✅ Firebase is initialized, testing connection...');
-                                    this.testFirebaseConnection()
-                                        .then(() => {
-                                            this.firebaseConnected = true;
-                                            this.connectionStatus = 'online';
-                                            console.log('🎉 Firebase connected successfully');
-                                            resolve();
-                                        })
-                                        .catch(error => {
-                                            console.error('❌ Firebase connection test failed:', error);
-                                            this.firebaseError = error.message;
-                                            this.firebaseErrorCode = error.code;
-                                            reject(error);
-                                        });
-                                } else {
-                                    console.error('❌ Firebase initialization failed');
-                                    this.firebaseError = window.firebase.error || 'Firebase initialization failed';
-                                    this.firebaseErrorCode = window.firebase.errorCode;
-                                    this.firebaseConfig = {
-                                        hasApiKey: !!window.firebase.config?.apiKey,
-                                        hasDatabaseURL: !!window.firebase.config?.databaseURL,
-                                        hasProjectId: !!window.firebase.config?.projectId,
-                                        databaseURL: window.firebase.config?.databaseURL
-                                    };
-                                    reject(new Error('Firebase initialization failed: ' + this.firebaseError));
-                                }
-                            } else if (attempts >= maxAttempts) {
-                                console.error('⏰ Firebase loading timeout');
-                                this.firebaseError = 'Firebase loading timeout - CDN mungkin bermasalah';
-                                reject(new Error('Firebase loading timeout'));
-                            } else {
-                                setTimeout(checkFirebase, 100);
-                            }
-                        };
-                        
-                        // Setup connection status callback
-                        window.firebaseConnectionCallback = (connected) => {
-                            if (connected && this.connectionStatus !== 'online') {
-                                console.log('🔗 Firebase real-time connection established');
-                                this.connectionStatus = 'online';
-                            } else if (!connected && this.connectionStatus === 'online') {
-                                console.log('📡 Firebase connection lost');
-                                this.connectionStatus = 'offline';
-                            }
-                        };
-                        
-                        checkFirebase();
-                    });
-                },
-
-                async testFirebaseConnection() {
+                async testSupabaseConnection() {
                     try {
-                        console.log('🧪 Testing Firebase read/write operations...');
-                        
-                        // Test write
-                        const testRef = window.firebase.ref(window.firebase.database, 'connection-test');
-                        const testData = {
-                            timestamp: Date.now(),
-                            status: 'connected',
-                            userAgent: navigator.userAgent.substring(0, 50)
-                        };
-                        
-                        console.log('✍️ Testing write operation...');
-                        await window.firebase.set(testRef, testData);
-                        console.log('✅ Write operation successful');
-                        
-                        // Test read
-                        console.log('📖 Testing read operation...');
-                        const snapshot = await window.firebase.get(testRef);
-                        if (!snapshot.exists()) {
-                            throw new Error('Failed to read test data from Firebase');
+                        // Test connection by fetching participants
+                        const { data, error } = await window.supabaseClient
+                            .from('participants')
+                            .select('count')
+                            .limit(1);
+                            
+                        if (error) {
+                            throw new Error(`Supabase connection failed: ${error.message}`);
                         }
-                        console.log('✅ Read operation successful:', snapshot.val());
                         
-                        // Clean up test data
-                        console.log('🧹 Cleaning up test data...');
-                        await window.firebase.set(testRef, null);
-                        console.log('✅ Cleanup successful');
-                        
+                        console.log('✅ Supabase connection successful');
                         return true;
                     } catch (error) {
-                        console.error('❌ Firebase connection test failed:', error);
-                        
-                        // Provide more specific error messages
-                        if (error.code === 'PERMISSION_DENIED') {
-                            throw new Error(`Database rules terlalu ketat. Set rules: {"rules": {".read": true, ".write": true}}`);
-                        } else if (error.code === 'NETWORK_ERROR') {
-                            throw new Error('Masalah jaringan atau Firebase server tidak dapat diakses');
-                        } else if (error.message.includes('databaseURL')) {
-                            throw new Error('databaseURL tidak valid atau Realtime Database belum dibuat');
+                        if (error.message.includes('YOUR_PROJECT_ID') || error.message.includes('YOUR_ANON_KEY')) {
+                            throw new Error('Supabase credentials belum diganti. Update SUPABASE_URL dan SUPABASE_ANON_KEY di kode.');
                         }
-                        
-                        throw new Error(`Firebase connection failed: ${error.message}`);
+                        throw error;
                     }
                 },
 
-                continueOffline() {
-                    this.showFirebaseConfig = false;
-                    this.firebaseConnected = false;
-                    this.connectionStatus = 'offline';
-                    this.participants = [...this.defaultParticipants];
-                    this.loadDataFromLocal();
-                },
-
-                async loadParticipants() {
-                    if (!this.firebaseConnected) {
-                        this.participants = [...this.defaultParticipants];
-                        return;
-                    }
-                    
+                async loadDataFromSupabase() {
                     try {
-                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
-                        const snapshot = await window.firebase.get(participantsRef);
+                        // Load participants
+                        const { data: participants, error: participantsError } = await window.supabaseClient
+                            .from('participants')
+                            .select('*')
+                            .order('id');
+                            
+                        if (participantsError) throw participantsError;
+                        this.participants = participants;
+
+                        // Load today's checks
+                        const today = this.getTodayKey();
+                        const { data: todayChecks, error: checksError } = await window.supabaseClient
+                            .from('daily_checks')
+                            .select('participant_id')
+                            .eq('check_date', today);
+                            
+                        if (checksError) throw checksError;
                         
-                        if (snapshot.exists()) {
-                            this.participants = Object.values(snapshot.val());
-                        } else {
-                            // Initialize with default participants
-                            this.participants = [...this.defaultParticipants];
-                            await this.saveParticipants();
-                        }
+                        this.todayChecks = {};
+                        this.todayChecks[today] = todayChecks.map(check => check.participant_id);
+
+                        // Load monthly data
+                        await this.loadMonthlyDataFromSupabase();
+                        
+                        console.log('✅ Data loaded from Supabase');
+                        
                     } catch (error) {
-                        console.error('Error loading participants:', error);
-                        this.participants = [...this.defaultParticipants];
+                        console.error('Error loading data from Supabase:', error);
+                        throw error;
                     }
                 },
 
-                async saveParticipants() {
-                    if (!this.firebaseConnected) return;
-                    
+                async loadMonthlyDataFromSupabase() {
                     try {
-                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
-                        const participantsObj = {};
-                        this.participants.forEach(p => {
-                            participantsObj[p.id] = p;
+                        const currentMonth = this.getCurrentMonth();
+                        const { data: monthlyStats, error } = await window.supabaseClient
+                            .from('monthly_stats')
+                            .select('*')
+                            .eq('month', currentMonth);
+                            
+                        if (error) throw error;
+                        
+                        // Convert to the format expected by the app
+                        if (!this.monthlyData[currentMonth]) {
+                            this.monthlyData[currentMonth] = {
+                                participantChecks: {},
+                                khatamDays: []
+                            };
+                        }
+                        
+                        monthlyStats.forEach(stat => {
+                            // Get participant checks for this month
+                            this.loadParticipantChecksFromSupabase(stat.participant_id, currentMonth);
                         });
-                        await window.firebase.set(participantsRef, participantsObj);
+                        
                     } catch (error) {
-                        console.error('Error saving participants:', error);
+                        console.error('Error loading monthly data:', error);
+                    }
+                },
+
+                async loadParticipantChecksFromSupabase(participantId, month) {
+                    try {
+                        const startDate = `${month}-01`;
+                        const endDate = `${month}-31`;
+                        
+                        const { data: checks, error } = await window.supabaseClient
+                            .from('daily_checks')
+                            .select('check_date')
+                            .eq('participant_id', participantId)
+                            .gte('check_date', startDate)
+                            .lte('check_date', endDate);
+                            
+                        if (error) throw error;
+                        
+                        if (!this.monthlyData[month]) {
+                            this.monthlyData[month] = { participantChecks: {}, khatamDays: [] };
+                        }
+                        
+                        this.monthlyData[month].participantChecks[participantId] = 
+                            checks.map(check => check.check_date);
+                            
+                    } catch (error) {
+                        console.error('Error loading participant checks:', error);
                     }
                 },
 
                 setupRealtimeListeners() {
-                    if (!this.firebaseConnected) return;
+                    if (!this.supabaseConnected) return;
                     
-                    try {
-                        // Listen to participants changes
-                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
-                        window.firebase.onValue(participantsRef, (snapshot) => {
-                            if (snapshot.exists()) {
-                                this.participants = Object.values(snapshot.val());
+                    // Listen to daily_checks changes
+                    window.supabaseClient
+                        .channel('daily_checks_channel')
+                        .on('postgres_changes', 
+                            { event: '*', schema: 'public', table: 'daily_checks' }, 
+                            (payload) => {
+                                console.log('📡 Real-time update received:', payload);
+                                this.handleRealtimeUpdate(payload);
                             }
-                        }, (error) => {
-                            console.error('Error in participants listener:', error);
-                        });
+                        )
+                        .subscribe();
                         
-                        // Listen to today checks
-                        const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                        window.firebase.onValue(todayChecksRef, (snapshot) => {
-                            if (snapshot.exists()) {
-                                this.todayChecks = snapshot.val();
+                    // Listen to participants changes
+                    window.supabaseClient
+                        .channel('participants_channel')
+                        .on('postgres_changes', 
+                            { event: '*', schema: 'public', table: 'participants' }, 
+                            (payload) => {
+                                console.log('📡 Participant update:', payload);
+                                this.handleParticipantUpdate(payload);
                             }
-                        }, (error) => {
-                            console.error('Error in todayChecks listener:', error);
-                        });
+                        )
+                        .subscribe();
                         
-                        // Listen to monthly data
-                        const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                        window.firebase.onValue(monthlyDataRef, (snapshot) => {
-                            if (snapshot.exists()) {
-                                this.monthlyData = snapshot.val();
-                            }
-                        }, (error) => {
-                            console.error('Error in monthlyData listener:', error);
-                        });
-                        
-                        console.log('Realtime listeners setup successfully');
-                    } catch (error) {
-                        console.error('Error setting up realtime listeners:', error);
+                    console.log('🔴 Real-time listeners setup complete');
+                },
+
+                handleRealtimeUpdate(payload) {
+                    const { eventType, new: newRecord, old: oldRecord } = payload;
+                    const checkDate = newRecord?.check_date || oldRecord?.check_date;
+                    const participantId = newRecord?.participant_id || oldRecord?.participant_id;
+                    
+                    if (!this.todayChecks[checkDate]) {
+                        this.todayChecks[checkDate] = [];
+                    }
+                    
+                    if (eventType === 'INSERT') {
+                        if (!this.todayChecks[checkDate].includes(participantId)) {
+                            this.todayChecks[checkDate].push(participantId);
+                        }
+                    } else if (eventType === 'DELETE') {
+                        const index = this.todayChecks[checkDate].indexOf(participantId);
+                        if (index > -1) {
+                            this.todayChecks[checkDate].splice(index, 1);
+                        }
+                    }
+                    
+                    this.updateMonthlyRecord();
+                },
+
+                handleParticipantUpdate(payload) {
+                    const { eventType, new: newRecord, old: oldRecord } = payload;
+                    
+                    if (eventType === 'UPDATE') {
+                        const index = this.participants.findIndex(p => p.id === newRecord.id);
+                        if (index !== -1) {
+                            this.participants[index] = newRecord;
+                        }
                     }
                 },
 
-                async loadData() {
-                    if (!this.firebaseConnected) {
-                        this.loadDataFromLocal();
-                        return;
-                    }
-                    
-                    try {
-                        // Load today's checks
-                        const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                        const todaySnapshot = await window.firebase.get(todayChecksRef);
-                        if (todaySnapshot.exists()) {
-                            this.todayChecks = todaySnapshot.val();
-                        }
-                        
-                        // Load monthly data
-                        const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                        const monthlySnapshot = await window.firebase.get(monthlyDataRef);
-                        if (monthlySnapshot.exists()) {
-                            this.monthlyData = monthlySnapshot.val();
-                        }
-                        
-                    } catch (error) {
-                        console.error('Error loading data from Firebase:', error);
-                        this.loadDataFromLocal();
-                    }
+                continueOffline() {
+                    this.showSupabaseError = false;
+                    this.connectionStatus = 'offline';
+                    this.supabaseConnected = false;
+                    this.loadDataFromLocal();
                 },
 
                 loadDataFromLocal() {
                     try {
-                        const saved = localStorage.getItem('quranTrackerData');
-                        if (saved) {
-                            const data = JSON.parse(saved);
-                            this.todayChecks = data.todayChecks || {};
-                            this.monthlyData = data.monthlyData || {};
+                        // Load today's checks
+                        const todayChecks = localStorage.getItem('quranTrackerTodayChecks');
+                        if (todayChecks) {
+                            this.todayChecks = JSON.parse(todayChecks);
                         }
+                        
+                        // Load monthly data
+                        const monthlyData = localStorage.getItem('quranTrackerMonthlyData');
+                        if (monthlyData) {
+                            this.monthlyData = JSON.parse(monthlyData);
+                        }
+                        
+                        // Load participants
+                        const participants = localStorage.getItem('quranTrackerParticipants');
+                        if (participants) {
+                            this.participants = JSON.parse(participants);
+                        }
+                        
+                        console.log('📦 Data loaded from localStorage');
+                        
                     } catch (error) {
-                        console.error('Error loading from localStorage:', error);
+                        console.error('Error loading data from localStorage:', error);
                     }
                 },
 
                 async saveData() {
                     // Always save to localStorage as backup
                     try {
-                        const data = {
-                            todayChecks: this.todayChecks,
-                            monthlyData: this.monthlyData
-                        };
-                        localStorage.setItem('quranTrackerData', JSON.stringify(data));
+                        localStorage.setItem('quranTrackerTodayChecks', JSON.stringify(this.todayChecks));
+                        localStorage.setItem('quranTrackerMonthlyData', JSON.stringify(this.monthlyData));
+                        localStorage.setItem('quranTrackerParticipants', JSON.stringify(this.participants));
                     } catch (error) {
                         console.error('Error saving to localStorage:', error);
                     }
                     
-                    // Save to Firebase if connected
-                    if (this.firebaseConnected) {
-                        try {
-                            // Save today's checks
-                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                            await window.firebase.set(todayChecksRef, this.todayChecks);
-                            
-                            // Save monthly data
-                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                            await window.firebase.set(monthlyDataRef, this.monthlyData);
-                            
-                        } catch (error) {
-                            console.error('Error saving to Firebase:', error);
-                            this.connectionStatus = 'offline';
-                        }
+                    // Save to Supabase if connected
+                    if (this.supabaseConnected) {
+                        await this.saveToSupabase();
                     }
+                    
+                    // Show save indicator
+                    this.showSaveIndicator = true;
+                    setTimeout(() => {
+                        this.showSaveIndicator = false;
+                    }, 2000);
+                },
+
+                async saveToSupabase() {
+                    // This will be called automatically through toggleCheck
+                    // No need for manual bulk save since we save individual changes
                 },
 
                 checkAnnouncementStatus() {
-                    // Check if user has seen announcement today
                     const today = this.getTodayKey();
                     const lastSeen = localStorage.getItem('announcementLastSeen');
                     
@@ -1272,14 +1138,27 @@
                         return;
                     }
                     
-                    // Update in local array
                     const index = this.participants.findIndex(p => p.id === this.editingParticipant.id);
                     if (index !== -1) {
                         this.participants[index].name = this.editingParticipant.name.trim();
                         
-                        // Save to Firebase
-                        await this.saveParticipants();
+                        // Save to Supabase if connected
+                        if (this.supabaseConnected) {
+                            try {
+                                const { error } = await window.supabaseClient
+                                    .from('participants')
+                                    .update({ name: this.editingParticipant.name.trim() })
+                                    .eq('id', this.editingParticipant.id);
+                                    
+                                if (error) throw error;
+                                console.log('✅ Participant name updated in Supabase');
+                            } catch (error) {
+                                console.error('Error updating participant:', error);
+                                alert('Gagal menyimpan ke server, tersimpan di local saja');
+                            }
+                        }
                         
+                        this.saveData();
                         this.showEditParticipant = false;
                         this.editingParticipant = { id: null, name: '' };
                     }
@@ -1344,14 +1223,58 @@
                     }
                     
                     const index = this.todayChecks[today].indexOf(participantId);
-                    if (index > -1) {
+                    const isCurrentlyChecked = index > -1;
+                    
+                    // Update local state
+                    if (isCurrentlyChecked) {
                         this.todayChecks[today].splice(index, 1);
                     } else {
                         this.todayChecks[today].push(participantId);
                     }
                     
+                    // Save to Supabase if connected
+                    if (this.supabaseConnected) {
+                        try {
+                            if (isCurrentlyChecked) {
+                                // Remove check
+                                const { error } = await window.supabaseClient
+                                    .from('daily_checks')
+                                    .delete()
+                                    .eq('participant_id', participantId)
+                                    .eq('check_date', today);
+                                    
+                                if (error) throw error;
+                                console.log('✅ Check removed from Supabase');
+                            } else {
+                                // Add check
+                                const { error } = await window.supabaseClient
+                                    .from('daily_checks')
+                                    .insert({
+                                        participant_id: participantId,
+                                        check_date: today
+                                    });
+                                    
+                                if (error) throw error;
+                                console.log('✅ Check added to Supabase');
+                            }
+                        } catch (error) {
+                            console.error('Error syncing with Supabase:', error);
+                            // Revert local change if Supabase fails
+                            if (isCurrentlyChecked) {
+                                this.todayChecks[today].push(participantId);
+                            } else {
+                                const revertIndex = this.todayChecks[today].indexOf(participantId);
+                                if (revertIndex > -1) {
+                                    this.todayChecks[today].splice(revertIndex, 1);
+                                }
+                            }
+                            alert('Gagal sinkronisasi dengan server. Coba lagi.');
+                            return;
+                        }
+                    }
+                    
                     this.updateMonthlyRecord();
-                    await this.saveData();
+                    this.saveData();
                 },
 
                 getTodayKey() {
@@ -1515,7 +1438,7 @@
                     let exportText = `📖 *ONE DAY ONE JUZ TRACKER*\n`;
                     exportText += `📅 ${dateStr}\n`;
                     exportText += `🕐 Update: ${timeStr} WIB\n`;
-                    exportText += `🔄 Sinkronisasi: ${this.firebaseConnected ? 'Realtime' : 'Local'}\n`;
+                    exportText += `🔄 Sync: ${this.supabaseConnected ? 'Supabase Real-time' : 'Local Storage'}\n`;
                     exportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
                     
                     exportText += `📊 *RINGKASAN PROGRESS*\n`;
@@ -1578,7 +1501,7 @@
                     document.body.removeChild(textArea);
                 },
 
-                async resetSystem() {
+                resetSystem() {
                     if (!confirm('⚠️ PERINGATAN! Ini akan menghapus semua data progress.\n\nApakah Anda yakin?')) {
                         return;
                     }
@@ -1588,7 +1511,6 @@
                     }
 
                     this.isLoading = true;
-                    this.loadingMessage = 'Mereset sistem...';
 
                     try {
                         // Reset all data
@@ -1596,18 +1518,23 @@
                         this.monthlyData = {};
                         this.exportText = '';
 
-                        // Clear localStorage
-                        localStorage.removeItem('quranTrackerData');
-                        localStorage.removeItem('announcementLastSeen');
+                        // Reset participants to default
+                        this.participants = [
+                            { id: 1, name: 'Ahmad' }, { id: 2, name: 'Fatimah' }, { id: 3, name: 'Abdullah' }, { id: 4, name: 'Khadijah' },
+                            { id: 5, name: 'Umar' }, { id: 6, name: 'Aisha' }, { id: 7, name: 'Ali' }, { id: 8, name: 'Zainab' },
+                            { id: 9, name: 'Yusuf' }, { id: 10, name: 'Maryam' }, { id: 11, name: 'Ibrahim' }, { id: 12, name: 'Hafsa' },
+                            { id: 13, name: 'Khalid' }, { id: 14, name: 'Ruqayyah' }, { id: 15, name: 'Hamza' }, { id: 16, name: 'Ummu Kulthum' },
+                            { id: 17, name: 'Bilal' }, { id: 18, name: 'Safiyyah' }, { id: 19, name: 'Salman' }, { id: 20, name: 'Sawdah' },
+                            { id: 21, name: 'Talhah' }, { id: 22, name: 'Maymunah' }, { id: 23, name: 'Zaid' }, { id: 24, name: 'Juwayriyyah' },
+                            { id: 25, name: 'Anas' }, { id: 26, name: 'Zaynab bint Jahsh' }, { id: 27, name: 'Mu\'adh' }, { id: 28, name: 'Ramlah' },
+                            { id: 29, name: 'Sa\'d' }, { id: 30, name: 'Habibah' }
+                        ];
 
-                        // Reset Firebase if connected
-                        if (this.firebaseConnected) {
-                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                            await window.firebase.set(todayChecksRef, {});
-                            
-                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                            await window.firebase.set(monthlyDataRef, {});
-                        }
+                        // Clear localStorage
+                        localStorage.removeItem('quranTrackerTodayChecks');
+                        localStorage.removeItem('quranTrackerMonthlyData');
+                        localStorage.removeItem('quranTrackerParticipants');
+                        localStorage.removeItem('announcementLastSeen');
 
                         alert('✅ Sistem berhasil direset! Halaman akan dimuat ulang.');
                         location.reload();
