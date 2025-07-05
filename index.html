@@ -3,9 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One Day One Juz Tracker</title>
+    <title>Bismillah, One Day One Juz</title>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue, push, update, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        // Firebase configuration - GANTI DENGAN CONFIG FIREBASE ANDA
+           const firebaseConfig = {
+          apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
+          authDomain: "odoj-halaqah1.firebaseapp.com",
+          projectId: "odoj-halaqah1",
+          storageBucket: "odoj-halaqah1.firebasestorage.app",
+          messagingSenderId: "268720571471",
+          appId: "1:268720571471:web:7c534d4996873fbbaed63a"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Make Firebase available globally
+        window.firebase = { database, ref, set, get, onValue, push, update, remove };
+    </script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
@@ -25,12 +49,6 @@
             background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
             transform: scale(1.02);
             border: 2px solid #ea580c;
-        }
-        
-        .countdown-timer {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .juz-card {
@@ -78,7 +96,7 @@
         .border-primary {
             border-color: #ea580c;
         }
-        
+
         /* Mobile optimizations */
         @media (max-width: 768px) {
             .juz-card {
@@ -92,10 +110,6 @@
             
             .text-responsive {
                 font-size: 0.875rem;
-            }
-            
-            .countdown-timer {
-                font-size: 1.5rem;
             }
         }
         
@@ -130,10 +144,173 @@
             max-height: 400px;
             overflow-y: auto;
         }
+
+        /* Floating Action Buttons */
+        .floating-buttons {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .floating-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .whatsapp-btn {
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            color: white;
+        }
+
+        .donate-btn {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ea580c;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Connection status */
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status-online {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-offline {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-connecting {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* Edit participant modal */
+        .edit-participant-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .juz-card:hover .edit-participant-btn {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div x-data="quranTracker()" x-init="init()" class="min-h-screen">
+        
+        <!-- Loading Overlay -->
+        <div x-show="isLoading" class="loading-overlay">
+            <div class="bg-white rounded-lg p-6 text-center">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">Memuat data...</p>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="connection-status" 
+             :class="{
+                'status-online': connectionStatus === 'online',
+                'status-offline': connectionStatus === 'offline', 
+                'status-connecting': connectionStatus === 'connecting'
+             }"
+             x-show="connectionStatus !== 'online'">
+            <span x-show="connectionStatus === 'connecting'">🔄 Menghubungkan...</span>
+            <span x-show="connectionStatus === 'offline'">❌ Offline</span>
+        </div>
+
+        <!-- Firebase Configuration Modal -->
+        <div x-show="showFirebaseConfig" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 modal-backdrop p-4">
+            <div class="bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full card-shadow">
+                <div class="text-center">
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🔧 Konfigurasi Firebase</h2>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg mb-6 text-left">
+                        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Perhatian!</h3>
+                        <p class="text-sm text-yellow-700">
+                            Untuk menggunakan fitur sinkronisasi realtime, Anda perlu mengkonfigurasi Firebase terlebih dahulu. 
+                            Edit kode JavaScript di bagian firebaseConfig dengan kredensial Firebase Anda.
+                        </p>
+                    </div>
+                    <button @click="showFirebaseConfig = false" 
+                            class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
+                        Mengerti, Lanjutkan
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Initial Announcement Modal -->
         <div x-show="showAnnouncement" 
              x-transition:enter="transition ease-out duration-300"
@@ -148,7 +325,7 @@
                     <div class="bg-primary rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                         <span class="text-white text-3xl">📖</span>
                     </div>
-                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">📢 Pengumuman Penting</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">📢 Selamat Datang!</h2>
                     <div class="text-left bg-orange-50 border-l-4 border-primary p-4 rounded-lg mb-6">
                         <h3 class="font-semibold text-gray-800 mb-2">⚠️ Perhatikan Deskripsi Juz!</h3>
                         <ul class="text-sm text-gray-700 space-y-2">
@@ -164,12 +341,49 @@
                             "Ya Allah, turunkan rahmat kepada kami dengan wasilah bacaan Al-Qur'an. 
                             Jadikan kami lebih mencintai untuk berinteraksi dengan Al-Qur'an daripada berbuat sia-sia. 
                             Anugerahkan kami pemahaman Al-Qur'an dan pengamalannya. 
-                            Perkenankan Al-Qur'an memberi syafaat untuk kami."
+                            Perkenankan Al-Qur'an memberi syafaat untuk kami di hari kiamat."
                         </p>
                     </div>
                     <button @click="closeAnnouncement()" 
                             class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
-                        ✅ Saya Mengerti, Mulai Tracking
+                        ✅ Alhamdulillah saya paham. Lanjut centang...
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Participant Modal -->
+        <div x-show="showEditParticipant" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-xl p-6 md:p-8 max-w-md w-full card-shadow"
+                 @click.away="showEditParticipant = false">
+                <h3 class="text-xl md:text-2xl font-bold text-gray-800 mb-6">✏️ Edit Nama Peserta</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nama Peserta</label>
+                        <input x-model="editingParticipant.name" 
+                               type="text" 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 md:px-4 md:py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm md:text-base"
+                               placeholder="Masukkan nama peserta"
+                               @keyup.enter="saveParticipantName()">
+                    </div>
+                </div>
+                
+                <div class="flex space-x-4 mt-6">
+                    <button @click="showEditParticipant = false" 
+                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-300 text-sm md:text-base">
+                        Batal
+                    </button>
+                    <button @click="saveParticipantName()" 
+                            class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300 text-sm md:text-base">
+                        Simpan
                     </button>
                 </div>
             </div>
@@ -181,7 +395,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
                     <div class="text-center md:text-left">
                         <h1 class="text-2xl md:text-4xl font-bold">One Day One Juz</h1>
-                        <p class="text-orange-100 mt-1 text-sm md:text-base">Tracker Membaca Al-Qur'an Bersama</p>
+                        <p class="text-orange-100 mt-1 text-sm md:text-base">Istiqomah bersama Al Qur'an</p>
                     </div>
                     <div class="text-center md:text-right">
                         <div x-show="!isAdmin">
@@ -202,7 +416,7 @@
         <div class="container mx-auto px-4 py-4">
             <div class="bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl p-4 md:p-6 card-shadow">
                 <div class="text-center">
-                    <h3 class="text-base md:text-lg font-semibold mb-2">⏰ Countdown Reset Harian</h3>
+                    <h3 class="text-base md:text-lg font-semibold mb-2">⏰ Membaca Al Qur'an akan memberkahi waktu yang kita miliki, bukan menguranginya ^^</h3>
                     <div class="countdown-timer text-2xl md:text-4xl mb-2" x-text="formatCountdown()"></div>
                     <p class="text-gray-300 text-sm md:text-base" x-text="countdownText"></p>
                 </div>
@@ -274,12 +488,19 @@
         </div>
 
         <!-- Tab Content: Checklist Harian -->
-        <div x-show="activeTab === 'checklist'" class="container mx-auto px-4 pb-8">
+        <div x-show="activeTab === 'checklist'" class="container mx-auto px-4 pb-24">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                 <template x-for="(participant, index) in getRotatedParticipants()" :key="participant.id">
-                    <div class="juz-card bg-white rounded-xl p-4 md:p-6 card-shadow" 
+                    <div class="juz-card bg-white rounded-xl p-4 md:p-6 card-shadow relative" 
                          :class="{'completed': isCompleted(participant.id)}"
                          @click="toggleCheck(participant.id)">
+                        
+                        <!-- Edit Button (Admin Only) -->
+                        <button x-show="isAdmin" 
+                                @click.stop="editParticipant(participant)"
+                                class="edit-participant-btn">
+                            ✏️
+                        </button>
                         
                         <!-- Juz Header -->
                         <div class="flex justify-between items-start mb-3 md:mb-4">
@@ -319,7 +540,7 @@
         </div>
 
         <!-- Tab Content: Rekap Bulanan -->
-        <div x-show="activeTab === 'monthly'" class="container mx-auto px-4 pb-8">
+        <div x-show="activeTab === 'monthly'" class="container mx-auto px-4 pb-24">
             <!-- Month Selection -->
             <div class="bg-white rounded-xl p-4 md:p-6 card-shadow mb-6">
                 <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
@@ -402,7 +623,7 @@
         </div>
 
         <!-- Tab Content: Admin -->
-        <div x-show="activeTab === 'admin' && isAdmin" class="container mx-auto px-4 pb-8">
+        <div x-show="activeTab === 'admin' && isAdmin" class="container mx-auto px-4 pb-24">
             <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
                 <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">🔧 Panel Admin</h3>
                 
@@ -411,12 +632,12 @@
                     <div class="border border-gray-200 rounded-lg p-4 md:p-6">
                         <h4 class="text-lg font-semibold text-gray-800 mb-3">📤 Ekspor Data WhatsApp</h4>
                         <p class="text-sm text-gray-600 mb-4">
-                            Export data progress hari ini dalam format yang siap untuk dibagikan ke WhatsApp grup.
+                            Export data progress hari ini dalam format yang siap untuk dibagikan ke berbagai grup.
                         </p>
                         
                         <button @click="generateWhatsAppExport()" 
                                 class="btn-primary text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-300 text-sm font-semibold">
-                            📱 Generate Export WhatsApp
+                            📱 Kirim laporan ke Grup Odoj
                         </button>
                         
                         <div x-show="exportText" class="mt-4">
@@ -445,6 +666,16 @@
                                 class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-300 text-sm font-semibold">
                             🗑️ Reset Semua Data
                         </button>
+                    </div>
+
+                    <!-- Firebase Status -->
+                    <div class="border border-blue-200 rounded-lg p-4 md:p-6 bg-blue-50">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-3">🔥 Status Firebase</h4>
+                        <div class="space-y-2 text-sm">
+                            <p><strong>Koneksi:</strong> <span :class="connectionStatus === 'online' ? 'text-green-600' : 'text-red-600'" x-text="connectionStatus === 'online' ? 'Terhubung' : 'Terputus'"></span></p>
+                            <p><strong>Sinkronisasi:</strong> <span x-text="firebaseConnected ? 'Aktif' : 'Nonaktif'" :class="firebaseConnected ? 'text-green-600' : 'text-red-600'"></span></p>
+                            <p><strong>Total Peserta:</strong> <span x-text="participants.length"></span></p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -496,13 +727,43 @@
                 </div>
             </div>
         </div>
+
+        <!-- Floating Action Buttons -->
+        <div class="floating-buttons">
+            <a href="https://wa.me/628123456789?text=Assalamu'alaikum, saya ingin bertanya-tanya tentang (isi topik pertanyaan...)" 
+               target="_blank" 
+               class="floating-btn whatsapp-btn" 
+               title="Tanya Jawab WhatsApp">
+                <span class="text-xl">💬</span>
+            </a>
+            <a href="https://example.com/donasi" 
+               target="_blank"
+               class="floating-btn donate-btn" 
+               title="Infaq">
+                <span class="text-xl">💝</span>
+            </a>
+        </div>
     </div>
 
     <script>
         function quranTracker() {
             return {
+                // Firebase connection
+                firebaseConnected: false,
+                connectionStatus: 'connecting', // connecting, online, offline
+                
+                // UI state
+                isLoading: false,
+                showFirebaseConfig: false,
+                showAnnouncement: false,
+                showEditParticipant: false,
+                editingParticipant: { id: null, name: '' },
+                
                 // Data peserta
-                participants: [
+                participants: [],
+                
+                // Default participants jika Firebase belum dikonfigurasi
+                defaultParticipants: [
                     { id: 1, name: 'Ahmad' }, { id: 2, name: 'Fatimah' }, { id: 3, name: 'Abdullah' }, { id: 4, name: 'Khadijah' },
                     { id: 5, name: 'Umar' }, { id: 6, name: 'Aisha' }, { id: 7, name: 'Ali' }, { id: 8, name: 'Zainab' },
                     { id: 9, name: 'Yusuf' }, { id: 10, name: 'Maryam' }, { id: 11, name: 'Ibrahim' }, { id: 12, name: 'Hafsa' },
@@ -515,36 +776,36 @@
 
                 // Detail setiap juz
                 juzDetails: {
-                    1: { name: "Alif Lam Mim", content: "Al-Fatihah - Al-Baqarah:141", pages: "1-21", description: "Pembukaan Al-Qur'an dengan Al-Fatihah yang merupakan inti dari seluruh Al-Qur'an, dilanjutkan dengan awal Surah Al-Baqarah tentang dasar-dasar keimanan." },
-                    2: { name: "Sayaqulu", content: "Al-Baqarah:142-253", pages: "22-41", description: "Kisah pergantian kiblat, hukum qishas, puasa Ramadhan, haji, dan berbagai ketentuan syariat fundamental." },
-                    3: { name: "Tilkal Rusul", content: "Al-Baqarah:254 - Ali Imran:91", pages: "42-61", description: "Kisah para rasul, ayat kursi, dan awal Surah Ali Imran tentang kelahiran Maryam dan Isa AS." },
-                    4: { name: "Lan Tanalu", content: "Ali Imran:92 - An-Nisa:23", pages: "62-81", description: "Anjuran berinfaq, perang Uhud, dan awal Surah An-Nisa tentang hak-hak wanita dan yatim." },
-                    5: { name: "Wal Muhsanat", content: "An-Nisa:24-147", pages: "82-102", description: "Hukum pernikahan, waris, kepemimpinan, dan perintah taat kepada Allah dan Rasul." },
-                    6: { name: "La Yuhibbullah", content: "An-Nisa:148 - Al-Maidah:81", pages: "103-121", description: "Larangan berbuat zalim, hukum halal-haram, dan kisah Bani Israil yang ingkar." },
-                    7: { name: "Wa Idza Sami'u", content: "Al-Maidah:82 - Al-An'am:110", pages: "122-142", description: "Pujian untuk ahli kitab yang beriman dan dalil-dalil tentang keesaan Allah." },
-                    8: { name: "Wa Lau Annana", content: "Al-An'am:111 - Al-A'raf:87", pages: "143-162", description: "Bantahan terhadap orang musyrik dan kisah para nabi dalam berdakwah." },
-                    9: { name: "Qalal Mala", content: "Al-A'raf:88 - Al-Anfal:40", pages: "163-182", description: "Lanjutan kisah para nabi dan perang Badr sebagai pertolongan Allah." },
-                    10: { name: "Wa A'lamu", content: "Al-Anfal:41 - At-Taubah:92", pages: "183-202", description: "Hukum pembagian ghanimah, perang Tabuk, dan sikap terhadap orang munafik." },
-                    11: { name: "Ya'tadhiruna", content: "At-Taubah:93 - Yunus:109", pages: "203-222", description: "Sikap terhadap orang yang tidak ikut jihad dan kisah Nabi Yunus AS." },
-                    12: { name: "Wa Ma Min Dabbah", content: "Hud:1 - Yusuf:52", pages: "223-242", description: "Kisah Nabi Hud, Saleh, Ibrahim, Luth, Syu'aib dan awal kisah Yusuf AS." },
-                    13: { name: "Wa Ma Ubarri'u", content: "Yusuf:53 - Ibrahim:52", pages: "243-262", description: "Lanjutan kisah Yusuf AS di Mesir dan kisah Ibrahim AS dengan kaumnya." },
-                    14: { name: "Rubama", content: "Al-Hijr:1 - An-Nahl:128", pages: "263-282", description: "Azab untuk kaum yang mendustakan dan nikmat-nikmat Allah yang tak terhitung." },
-                    15: { name: "Subhanallahi", content: "Al-Isra:1 - Al-Kahf:74", pages: "283-302", description: "Isra Mi'raj, kisah Ashab al-Kahf, dan Dzulqarnain." },
-                    16: { name: "Qala Alam", content: "Al-Kahf:75 - Taha:135", pages: "303-322", description: "Kisah Musa dan Khidr, serta Musa AS dengan Fir'aun." },
-                    17: { name: "Aqtarabu", content: "Al-Anbiya:1 - Al-Hajj:78", pages: "323-342", description: "Kisah para nabi dan keutamaan ibadah haji." },
-                    18: { name: "Qad Aflaha", content: "Al-Mu'minun:1 - Al-Furqan:20", pages: "343-362", description: "Sifat-sifat orang mukmin dan kritik terhadap orang kafir." },
-                    19: { name: "Wa Qalalladzina", content: "Al-Furqan:21 - An-Naml:55", pages: "363-382", description: "Bantahan terhadap orang kafir dan kisah Nabi Sulaiman AS." },
-                    20: { name: "A Man Khalaq", content: "An-Naml:56 - Al-Ankabut:45", pages: "383-402", description: "Kisah Luth AS dan nasihat untuk beribadah kepada Allah." },
-                    21: { name: "Utlu Ma Uhiya", content: "Al-Ankabut:46 - Al-Ahzab:30", pages: "403-422", description: "Ujian bagi orang beriman dan perang Ahzab." },
-                    22: { name: "Wa Man Yaqnut", content: "Al-Ahzab:31 - Yasin:27", pages: "423-442", description: "Kedudukan istri-istri Nabi dan awal Surah Yasin." },
-                    23: { name: "Wa Mali", content: "Yasin:28 - Az-Zumar:31", pages: "443-462", description: "Keutamaan Surah Yasin dan sifat-sifat Al-Qur'an." },
-                    24: { name: "Fa Man Azlam", content: "Az-Zumar:32 - Fussilat:46", pages: "463-482", description: "Balasan bagi orang yang berbuat zalim dan tanda-tanda kekuasaan Allah." },
-                    25: { name: "Ilaih Yuraddu", content: "Fussilat:47 - Al-Jatsiyah:37", pages: "483-502", description: "Semua urusan dikembalikan kepada Allah dan hari pembalasan." },
-                    26: { name: "Ha Mim", content: "Al-Ahqaf:1 - Adz-Dzariyat:30", pages: "503-522", description: "Awal surah-surah Ha Mim dan janji Allah kepada Ibrahim AS." },
-                    27: { name: "Qala Fa Ma", content: "Adz-Dzariyat:31 - Al-Hadid:29", pages: "523-542", description: "Lanjutan kisah Ibrahim AS dan keutamaan beriman kepada Allah dan Rasul-Nya." },
-                    28: { name: "Qad Sami'allah", content: "Al-Mujadilah:1 - At-Tahrim:12", pages: "543-562", description: "Hukum zhihar, etika bermasyarakat, dan teladan dari istri-istri yang shalihah." },
-                    29: { name: "Tabarakallahi", content: "Al-Mulk:1 - Al-Mursalat:50", pages: "563-582", description: "Kebesaran Allah dan ancaman bagi orang yang mendustakan hari pembalasan." },
-                    30: { name: "Amma Yatasa'alun", content: "An-Naba:1 - An-Nas:6", pages: "583-604", description: "Hari kiamat, surga, neraka, dan perlindungan Allah dari godaan syaitan." }
+                    1: { name: "Al Fatihah", content: "Al-Fatihah - Al-Baqarah:141", pages: "1-21", description: "Doa meminta petunjuk (Al-Fatihah), ciri orang bertakwa, kisah Bani Israil sebagai pelajaran bagi umat Islam." },
+                    2: { name: " سَيَقُولُ ٱلسُّفَهَآءُ", content: "Al-Baqarah:142-252", pages: "22-41", description: "Perintah puasa Ramadhan, hukum qishash, infaq, dan jihad. Keutamaan sabar dan kesatuan arah ibadah." },
+                    3: { name: "۞ تِلْكَ ٱلرُّسُلُ فَضَّلْنَا", content: "Al-Baqarah:253 - Ali Imran:92", pages: "42-61", description: "Kisah Nabi Musa, Nabi Isa, dan perjuangan para nabi. Anjuran bersedekah dan meninggalkan riba." },
+                    4: { name: " كُلُّ ٱلطَّعَامِ", content: "Ali Imran:93 - An-Nisa:23", pages: "62-82", description: "Perang Uhud, akhlak dalam kemenangan dan kekalahan, serta tanggung jawab individu." },
+                    5: { name: "حُرِّمَتْ عَلَيْكُمْ", content: "An-Nisa:24-147", pages: "82-101", description: "Warisan, poligami, perlindungan anak yatim, loyalitas kepada Allah dan Rasul-Nya." },
+                    6: { name: " لَّا يُحِبُّ ٱللَّهُ", content: "An-Nisa:148 - Al-Maidah:81", pages: "101-121", description: "Larangan berbuat zalim, hukum halal-haram, dan kisah Bani Israil yang ingkar." },
+                    7: { name: "۞ لَتَجِدَنَّ أَشَدَّ ٱلنَّاسِ", content: "Al-Maidah:82 - Al-An'am:107", pages: "122-141", description: "Pujian untuk ahli kitab yang beriman dan dalil-dalil tentang keesaan Allah." },
+                    8: { name: "وَلَا تَسُبُّوا۟ ٱلَّذِينَ", content: "Al-An'am:108 - Al-A'raf:84", pages: "141-161", description: "Bantahan terhadap orang musyrik dan kisah para nabi dalam berdakwah." },
+                    9: { name: "وَإِلَىٰ مَدْيَنَ أَخَاهُمْ", content: "Al-A'raf:85 - Al-Anfal:40", pages: "161-181", description: "Lanjutan kisah para nabi dan perang Badr sebagai pertolongan Allah." },
+                    10: { name: "۞ وَٱعْلَمُوٓا۟ أَنَّمَا", content: "Al-Anfal:41 - At-Taubah:89", pages: "182-201", description: "Hukum pembagian ghanimah, perang Tabuk, dan sikap terhadap orang munafik." },
+                    11: { name: "وَجَآءَ ٱلْمُعَذِّرُونَ", content: "At-Taubah:90 - Yunus:109", pages: "201-221", description: "Sikap terhadap orang yang tidak ikut jihad dan kisah Nabi Yunus AS." },
+                    12: { name: "الٓر ۚ كِتَـٰبٌ أُحْكِمَتْ", content: "Hud:1 - Yusuf:57", pages: "222-242", description: "Kisah Nabi Nuh, Hud, Shalih, dan Yusuf sebagai teladan dalam ujian hidup." },
+                    13: { name: "وَجَآءَ إِخْوَةُ يُوسُفَ", content: "Yusuf:58 - Ibrahim:52", pages: "242-261", description: "Lanjutan kisah Yusuf AS di Mesir dan kisah Ibrahim AS dengan kaumnya." },
+                    14: { name: "الٓر ۚ تِلْكَ ءَايَـٰتُ", content: "Al-Hijr:1 - An-Nahl:128", pages: "262-281", description: "Azab untuk kaum yang mendustakan dan nikmat-nikmat Allah yang tak terhitung." },
+                    15: { name: "سُبْحَـٰنَ ٱلَّذِىٓ أَسْرَىٰ", content: "Al-Isra:1 - Al-Kahf:82", pages: "281-302", description: "Isra Mi'raj, kisah Ashab al-Kahf, dan Dzulqarnain." },
+                    16: { name: "وَيَسْـَٔلُونَكَ عَن ذِى ٱلْقَرْنَيْنِ ۖ", content: "Al-Kahf:83 - Taha:135", pages: "302-321", description: "Kisah Musa dan Khidr, serta Musa AS dengan Fir'aun." },
+                    17: { name: "ٱقْتَرَبَ لِلنَّاسِ", content: "Al-Anbiya:1 - Al-Hajj:78", pages: "322-341", description: "Kisah para nabi dan keutamaan ibadah haji." },
+                    18: { name: "قَدْ أَفْلَحَ ٱلْمُؤْمِنُونَ", content: "Al-Mu'minun:1 - Al-Furqan:20", pages: "342-361", description: "Sifat-sifat orang mukmin dan kritik terhadap orang kafir." },
+                    19: { name: "۞ وَقَالَ ٱلَّذِينَ لَا يَرْجُونَ", content: "Al-Furqan:21 - An-Naml:58", pages: "362-382", description: "Bantahan terhadap orang kafir dan kisah Nabi Sulaiman AS." },
+                    20: { name: "قُلِ ٱلْحَمْدُ لِلَّهِ", content: "An-Naml:59 - Al-Ankabut:45", pages: "382-402", description: "Kisah Luth AS dan nasihat untuk beribadah kepada Allah." },
+                    21: { name: "۞ وَلَا تُجَـٰدِلُوٓا۟ ", content: "Al-Ankabut:46 - Al-Ahzab:34", pages: "402-422", description: "Ujian bagi orang beriman dan perang Ahzab." },
+                    22: { name: "إِنَّ ٱلْمُسْلِمِينَ وَٱلْمُسْلِمَـٰتِ", content: "Al-Ahzab:35 - Akhir Fathir", pages: "422-440", description: "Kedudukan istri-istri Nabi dan awal Surah Yasin." },
+                    23: { name: "يسٓ ", content: "Yasin:1 - Az-Zumar:31", pages: "440-461", description: "Keutamaan Surah Yasin dan sifat-sifat Al-Qur'an." },
+                    24: { name: "۞ فَمَنْ أَظْلَمُ مِمَّن كَذَبَ", content: "Az-Zumar:32 - Akhir Fushshilat", pages: "462-482", description: "Balasan bagi orang yang berbuat zalim dan tanda-tanda kekuasaan Allah." },
+                    25: { name: "حمٓ ", content: "Asy Syura:1 - Al-Jatsiyah:37", pages: "482-502", description: "Semua urusan dikembalikan kepada Allah dan hari pembalasan." },
+                    26: { name: "حمٓ", content: "Al-Ahqaf:1 - akhir Ath Thur", pages: "502-520", description: "Awal surah-surah Ha Mim dan janji Allah kepada Ibrahim AS." },
+                    27: { name: "وَٱلذَّٰرِيَـٰتِ ذَرْوًۭا", content: "Adz-Dzariyat:1 - Al-Hadid:29", pages: "520-541", description: "Lanjutan kisah Ibrahim AS dan keutamaan beriman kepada Allah dan Rasul-Nya." },
+                    28: { name: "قَدْ سَمِعَ ٱللَّهُ", content: "Al-Mujadilah:1 - At-Tahrim:12", pages: "542-561", description: "Hukum zhihar, etika bermasyarakat, dan teladan dari istri-istri yang shalihah." },
+                    29: { name: "تَبَـٰرَكَ ٱلَّذِى", content: "Al-Mulk:1 - Al-Mursalat:50", pages: "562-581", description: "Kebesaran Allah dan ancaman bagi orang yang mendustakan hari pembalasan." },
+                    30: { name: "عَمَّ يَتَسَآءَلُونَ", content: "An-Naba:1 - An-Nas:6", pages: "582-604", description: "Hari kiamat, surga, neraka, dan perlindungan Allah dari godaan syaitan." }
                 },
 
                 // State management
@@ -561,54 +822,250 @@
                 adminError: '',
                 exportText: '',
                 
-                // Announcement
-                showAnnouncement: true,
-                
                 // Countdown
                 countdown: { hours: 0, minutes: 0, seconds: 0 },
                 countdownText: '',
                 countdownInterval: null,
                 
-                // Program start date - Juli 2025
+                // Program start date
                 programStartDate: new Date('2025-07-01'),
 
-                init() {
-                    this.checkAnnouncementStatus();
-                    this.loadData();
-                    this.generateAvailableMonths();
-                    this.selectedMonth = this.getCurrentMonth();
-                    this.updateMonthlyData();
-                    this.startCountdown();
-                    this.scheduleReset();
+                async init() {
+                    this.isLoading = true;
+                    
+                    try {
+                        // Initialize Firebase
+                        await this.initFirebase();
+                        
+                        // Load participants from Firebase or use default
+                        await this.loadParticipants();
+                        
+                        // Load data
+                        await this.loadData();
+                        
+                        // Check announcement
+                        this.checkAnnouncementStatus();
+                        
+                        // Setup months and countdown
+                        this.generateAvailableMonths();
+                        this.selectedMonth = this.getCurrentMonth();
+                        this.updateMonthlyData();
+                        this.startCountdown();
+                        
+                        // Setup realtime listeners
+                        this.setupRealtimeListeners();
+                        
+                    } catch (error) {
+                        console.error('Initialization error:', error);
+                        this.connectionStatus = 'offline';
+                        // Load data from localStorage as fallback
+                        this.loadDataFromLocal();
+                        this.participants = [...this.defaultParticipants];
+                    }
+                    
+                    this.isLoading = false;
+                },
+
+                async initFirebase() {
+                    try {
+                        if (!window.firebase) {
+                            throw new Error('Firebase not loaded');
+                        }
+                        
+                        // Test Firebase connection
+                        const testRef = window.firebase.ref(window.firebase.database, 'test');
+                        await window.firebase.set(testRef, 'connection-test');
+                        
+                        this.firebaseConnected = true;
+                        this.connectionStatus = 'online';
+                        console.log('Firebase connected successfully');
+                        
+                    } catch (error) {
+                        console.error('Firebase initialization failed:', error);
+                        this.firebaseConnected = false;
+                        this.connectionStatus = 'offline';
+                        
+                        // Show configuration modal if Firebase config is not set
+                        if (error.message.includes('not loaded') || error.message.includes('Failed to initialize')) {
+                            this.showFirebaseConfig = true;
+                        }
+                        throw error;
+                    }
+                },
+
+                async loadParticipants() {
+                    if (!this.firebaseConnected) {
+                        this.participants = [...this.defaultParticipants];
+                        return;
+                    }
+                    
+                    try {
+                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
+                        const snapshot = await window.firebase.get(participantsRef);
+                        
+                        if (snapshot.exists()) {
+                            this.participants = Object.values(snapshot.val());
+                        } else {
+                            // Initialize with default participants
+                            this.participants = [...this.defaultParticipants];
+                            await this.saveParticipants();
+                        }
+                    } catch (error) {
+                        console.error('Error loading participants:', error);
+                        this.participants = [...this.defaultParticipants];
+                    }
+                },
+
+                async saveParticipants() {
+                    if (!this.firebaseConnected) return;
+                    
+                    try {
+                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
+                        const participantsObj = {};
+                        this.participants.forEach(p => {
+                            participantsObj[p.id] = p;
+                        });
+                        await window.firebase.set(participantsRef, participantsObj);
+                    } catch (error) {
+                        console.error('Error saving participants:', error);
+                    }
+                },
+
+                setupRealtimeListeners() {
+                    if (!this.firebaseConnected) return;
+                    
+                    // Listen to participants changes
+                    const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
+                    window.firebase.onValue(participantsRef, (snapshot) => {
+                        if (snapshot.exists()) {
+                            this.participants = Object.values(snapshot.val());
+                        }
+                    });
+                    
+                    // Listen to today checks
+                    const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                    window.firebase.onValue(todayChecksRef, (snapshot) => {
+                        if (snapshot.exists()) {
+                            this.todayChecks = snapshot.val();
+                        }
+                    });
+                    
+                    // Listen to monthly data
+                    const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                    window.firebase.onValue(monthlyDataRef, (snapshot) => {
+                        if (snapshot.exists()) {
+                            this.monthlyData = snapshot.val();
+                        }
+                    });
+                },
+
+                async loadData() {
+                    if (!this.firebaseConnected) {
+                        this.loadDataFromLocal();
+                        return;
+                    }
+                    
+                    try {
+                        // Load today's checks
+                        const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                        const todaySnapshot = await window.firebase.get(todayChecksRef);
+                        if (todaySnapshot.exists()) {
+                            this.todayChecks = todaySnapshot.val();
+                        }
+                        
+                        // Load monthly data
+                        const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                        const monthlySnapshot = await window.firebase.get(monthlyDataRef);
+                        if (monthlySnapshot.exists()) {
+                            this.monthlyData = monthlySnapshot.val();
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error loading data from Firebase:', error);
+                        this.loadDataFromLocal();
+                    }
+                },
+
+                loadDataFromLocal() {
+                    try {
+                        const saved = localStorage.getItem('quranTrackerData');
+                        if (saved) {
+                            const data = JSON.parse(saved);
+                            this.todayChecks = data.todayChecks || {};
+                            this.monthlyData = data.monthlyData || {};
+                        }
+                    } catch (error) {
+                        console.error('Error loading from localStorage:', error);
+                    }
+                },
+
+                async saveData() {
+                    // Always save to localStorage as backup
+                    try {
+                        const data = {
+                            todayChecks: this.todayChecks,
+                            monthlyData: this.monthlyData
+                        };
+                        localStorage.setItem('quranTrackerData', JSON.stringify(data));
+                    } catch (error) {
+                        console.error('Error saving to localStorage:', error);
+                    }
+                    
+                    // Save to Firebase if connected
+                    if (this.firebaseConnected) {
+                        try {
+                            // Save today's checks
+                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                            await window.firebase.set(todayChecksRef, this.todayChecks);
+                            
+                            // Save monthly data
+                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                            await window.firebase.set(monthlyDataRef, this.monthlyData);
+                            
+                        } catch (error) {
+                            console.error('Error saving to Firebase:', error);
+                        }
+                    }
                 },
 
                 checkAnnouncementStatus() {
-                    const announcementSeen = localStorage.getItem('announcementSeen');
-                    if (announcementSeen) {
-                        this.showAnnouncement = false;
+                    // Check if user has seen announcement today
+                    const today = this.getTodayKey();
+                    const lastSeen = localStorage.getItem('announcementLastSeen');
+                    
+                    if (lastSeen !== today) {
+                        this.showAnnouncement = true;
                     }
                 },
 
                 closeAnnouncement() {
                     this.showAnnouncement = false;
-                    localStorage.setItem('announcementSeen', 'true');
+                    const today = this.getTodayKey();
+                    localStorage.setItem('announcementLastSeen', today);
                 },
 
-                loadData() {
-                    const saved = localStorage.getItem('quranTrackerData');
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        this.todayChecks = data.todayChecks || {};
-                        this.monthlyData = data.monthlyData || {};
+                editParticipant(participant) {
+                    this.editingParticipant = { ...participant };
+                    this.showEditParticipant = true;
+                },
+
+                async saveParticipantName() {
+                    if (!this.editingParticipant.name.trim()) {
+                        alert('Nama peserta tidak boleh kosong!');
+                        return;
                     }
-                },
-
-                saveData() {
-                    const data = {
-                        todayChecks: this.todayChecks,
-                        monthlyData: this.monthlyData
-                    };
-                    localStorage.setItem('quranTrackerData', JSON.stringify(data));
+                    
+                    // Update in local array
+                    const index = this.participants.findIndex(p => p.id === this.editingParticipant.id);
+                    if (index !== -1) {
+                        this.participants[index].name = this.editingParticipant.name.trim();
+                        
+                        // Save to Firebase
+                        await this.saveParticipants();
+                        
+                        this.showEditParticipant = false;
+                        this.editingParticipant = { id: null, name: '' };
+                    }
                 },
 
                 getCurrentDate() {
@@ -641,7 +1098,6 @@
                     const daysSinceStart = this.getDaysSinceStart();
                     const rotated = [...this.participants];
                     
-                    // Rotate array based on days passed
                     for (let i = 0; i < daysSinceStart % 30; i++) {
                         rotated.unshift(rotated.pop());
                     }
@@ -663,7 +1119,7 @@
                     return this.todayChecks[today]?.includes(participantId) || false;
                 },
 
-                toggleCheck(participantId) {
+                async toggleCheck(participantId) {
                     const today = this.getTodayKey();
                     
                     if (!this.todayChecks[today]) {
@@ -678,7 +1134,7 @@
                     }
                     
                     this.updateMonthlyRecord();
-                    this.saveData();
+                    await this.saveData();
                 },
 
                 getTodayKey() {
@@ -701,7 +1157,6 @@
                         };
                     }
                     
-                    // Update participant monthly counts
                     this.participants.forEach(participant => {
                         if (!this.monthlyData[month].participantChecks[participant.id]) {
                             this.monthlyData[month].participantChecks[participant.id] = [];
@@ -719,7 +1174,6 @@
                         }
                     });
                     
-                    // Update khatam tracking
                     const completedToday = this.getTodayCompleted();
                     const khatamDays = this.monthlyData[month].khatamDays;
                     const isKhatamDay = khatamDays.includes(today);
@@ -735,9 +1189,7 @@
                 generateAvailableMonths() {
                     const months = [];
                     const currentDate = new Date();
-                    const startDate = new Date('2025-07-01'); // Mulai dari Juli 2025
-                    
-                    // Generate dari Juli 2025 sampai bulan saat ini + 6 bulan ke depan
+                    const startDate = new Date('2025-07-01');
                     const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 6, 1);
                     
                     let tempDate = new Date(startDate);
@@ -756,14 +1208,12 @@
                 },
 
                 updateMonthlyData() {
-                    // Auto-add current month if not exists
                     const currentMonth = this.getCurrentMonth();
                     if (!this.monthlyData[currentMonth]) {
                         this.monthlyData[currentMonth] = {
                             participantChecks: {},
                             khatamDays: []
                         };
-                        this.saveData();
                     }
                 },
 
@@ -791,6 +1241,38 @@
                     return total;
                 },
 
+                // Countdown functions
+                startCountdown() {
+                    this.updateCountdown();
+                    this.countdownInterval = setInterval(() => {
+                        this.updateCountdown();
+                    }, 1000);
+                },
+
+                updateCountdown() {
+                    const now = new Date();
+                    const nextMidnight = new Date(now);
+                    
+                    nextMidnight.setDate(nextMidnight.getDate() + 1);
+                    nextMidnight.setHours(0, 0, 0, 0);
+                    
+                    const diff = nextMidnight - now;
+                    
+                    this.countdown.hours = Math.floor(diff / (1000 * 60 * 60));
+                    this.countdown.minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    this.countdown.seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    if (this.countdown.hours < 1) {
+                        this.countdownText = `Reset dalam ${this.countdown.minutes} menit ${this.countdown.seconds} detik`;
+                    } else {
+                        this.countdownText = `Reset dalam ${this.countdown.hours} jam ${this.countdown.minutes} menit`;
+                    }
+                },
+
+                formatCountdown() {
+                    return `${String(this.countdown.hours).padStart(2, '0')}:${String(this.countdown.minutes).padStart(2, '0')}:${String(this.countdown.seconds).padStart(2, '0')}`;
+                },
+
                 // Admin functions
                 adminLogin() {
                     if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
@@ -808,7 +1290,6 @@
                     this.activeTab = 'checklist';
                 },
 
-                // WhatsApp Export Function
                 generateWhatsAppExport() {
                     const now = new Date();
                     const dateStr = now.toLocaleDateString('id-ID', {
@@ -849,6 +1330,7 @@
                     let exportText = `📖 *ONE DAY ONE JUZ TRACKER*\n`;
                     exportText += `📅 ${dateStr}\n`;
                     exportText += `🕐 Update: ${timeStr} WIB\n`;
+                    exportText += `🔄 Sinkronisasi: ${this.firebaseConnected ? 'Realtime' : 'Local'}\n`;
                     exportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
                     
                     exportText += `📊 *RINGKASAN PROGRESS*\n`;
@@ -911,7 +1393,7 @@
                     document.body.removeChild(textArea);
                 },
 
-                resetSystem() {
+                async resetSystem() {
                     if (!confirm('⚠️ PERINGATAN! Ini akan menghapus semua data progress.\n\nApakah Anda yakin?')) {
                         return;
                     }
@@ -920,73 +1402,36 @@
                         return;
                     }
 
-                    // Reset all data
-                    this.todayChecks = {};
-                    this.monthlyData = {};
-                    this.exportText = '';
+                    this.isLoading = true;
 
-                    // Clear localStorage
-                    localStorage.removeItem('quranTrackerData');
-                    localStorage.removeItem('announcementSeen');
+                    try {
+                        // Reset all data
+                        this.todayChecks = {};
+                        this.monthlyData = {};
+                        this.exportText = '';
 
-                    this.saveData();
-                    alert('✅ Sistem berhasil direset! Halaman akan dimuat ulang.');
-                    
-                    // Reload page
-                    location.reload();
-                },
+                        // Clear localStorage
+                        localStorage.removeItem('quranTrackerData');
+                        localStorage.removeItem('announcementLastSeen');
 
-                // Countdown functions
-                startCountdown() {
-                    this.updateCountdown();
-                    this.countdownInterval = setInterval(() => {
-                        this.updateCountdown();
-                    }, 1000);
-                },
+                        // Reset Firebase if connected
+                        if (this.firebaseConnected) {
+                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                            await window.firebase.set(todayChecksRef, {});
+                            
+                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                            await window.firebase.set(monthlyDataRef, {});
+                        }
 
-                updateCountdown() {
-                    const now = new Date();
-                    const tomorrow = new Date(now);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(0, 0, 0, 0);
-                    
-                    const diff = tomorrow - now;
-                    
-                    this.countdown.hours = Math.floor(diff / (1000 * 60 * 60));
-                    this.countdown.minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    this.countdown.seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                    
-                    if (this.countdown.hours < 1) {
-                        this.countdownText = `Reset dalam ${this.countdown.minutes} menit ${this.countdown.seconds} detik`;
-                    } else {
-                        this.countdownText = `Reset dalam ${this.countdown.hours} jam ${this.countdown.minutes} menit`;
+                        alert('✅ Sistem berhasil direset! Halaman akan dimuat ulang.');
+                        location.reload();
+                        
+                    } catch (error) {
+                        console.error('Error resetting system:', error);
+                        alert('❌ Terjadi kesalahan saat reset sistem.');
                     }
-                },
-
-                formatCountdown() {
-                    return `${String(this.countdown.hours).padStart(2, '0')}:${String(this.countdown.minutes).padStart(2, '0')}:${String(this.countdown.seconds).padStart(2, '0')}`;
-                },
-
-                scheduleReset() {
-                    const now = new Date();
-                    const tomorrow = new Date(now);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(0, 0, 0, 0);
                     
-                    const timeUntilReset = tomorrow - now;
-                    
-                    setTimeout(() => {
-                        this.performReset();
-                        // Schedule next reset
-                        this.scheduleReset();
-                    }, timeUntilReset);
-                },
-
-                performReset() {
-                    // Reset today's checks but keep monthly data
-                    this.todayChecks = {};
-                    this.saveData();
-                    console.log('Daily reset performed at:', new Date().toLocaleString());
+                    this.isLoading = false;
                 }
             }
         }
