@@ -16,12 +16,14 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2YmZjY2ppZm5wdHN6Y2hhYmpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2OTQyODMsImV4cCI6MjA2NzI3MDI4M30.Al8QBt2khiS35uG5IkGIJrLtAd1niWUFAbcsx_pBEgU'
         
         // Initialize Supabase
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-        
-        // Make Supabase available globally
-        window.supabaseClient = supabase
-        
-        console.log('🟢 Supabase initialized successfully')
+        let supabase = null;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            window.supabaseClient = supabase
+            console.log('🟢 Supabase initialized successfully')
+        } catch (error) {
+            console.log('🟠 Supabase initialization failed, using offline mode')
+        }
     </script>
     
     <style>
@@ -261,7 +263,7 @@
         <div x-show="isLoading" class="loading-overlay">
             <div class="bg-white rounded-lg p-6 text-center">
                 <div class="spinner mx-auto mb-4"></div>
-                <p class="text-gray-600">Memuat data...</p>
+                <p class="text-gray-600" x-text="loadingMessage"></p>
             </div>
         </div>
 
@@ -273,44 +275,8 @@
                 'status-connecting': connectionStatus === 'connecting'
              }"
              x-show="connectionStatus !== 'online'">
-            <span x-show="connectionStatus === 'connecting'">🔄 Menghubungkan Supabase...</span>
-            <span x-show="connectionStatus === 'offline'">❌ Mode Offline</span>
-        </div>
-
-        <!-- Supabase Error Modal -->
-        <div x-show="showSupabaseError" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 modal-backdrop p-4">
-            <div class="bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full card-shadow">
-                <div class="text-center">
-                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🔧 Konfigurasi Supabase</h2>
-                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg mb-6 text-left">
-                        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Setup Diperlukan!</h3>
-                        <div class="text-sm text-yellow-700 space-y-2">
-                            <p>Untuk multi-device sync, ganti credentials Supabase:</p>
-                            <ol class="list-decimal list-inside space-y-1 ml-2">
-                                <li>Buat project di <strong>supabase.com</strong></li>
-                                <li>Jalankan SQL script untuk membuat tabel</li>
-                                <li>Ganti <strong>SUPABASE_URL</strong> dan <strong>SUPABASE_ANON_KEY</strong></li>
-                                <li>Refresh halaman</li>
-                            </ol>
-                        </div>
-                    </div>
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-6 text-left">
-                        <h3 class="font-semibold text-red-800 mb-2">🚨 Error:</h3>
-                        <p class="text-sm text-red-700" x-text="supabaseError"></p>
-                    </div>
-                    <button @click="continueOffline()" 
-                            class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
-                        📱 Lanjutkan Mode Offline
-                    </button>
-                </div>
-            </div>
+            <span x-show="connectionStatus === 'connecting'">🔄 Menghubungkan...</span>
+            <span x-show="connectionStatus === 'offline'">📱 Mode Offline</span>
         </div>
 
         <!-- Initial Announcement Modal -->
@@ -759,14 +725,12 @@
         function quranTracker() {
             return {
                 // Connection state
-                connectionStatus: 'connecting', // connecting, online, offline
+                connectionStatus: 'connecting',
                 supabaseConnected: false,
-                supabaseError: null,
-                showSupabaseError: false,
                 
                 // UI state
-                isLoading: false,
-                showSaveIndicator: false,
+                isLoading: true,
+                loadingMessage: 'Memuat aplikasi...',
                 showAnnouncement: false,
                 showEditParticipant: false,
                 editingParticipant: { id: null, name: '' },
@@ -806,7 +770,7 @@
                     19: { name: "۞ وَقَالَ ٱلَّذِينَ لَا يَرْجُونَ", content: "Al-Furqan:21 - An-Naml:58", pages: "362-382", description: "Bantahan terhadap orang kafir dan kisah Nabi Sulaiman AS." },
                     20: { name: "قُلِ ٱلْحَمْدُ لِلَّهِ", content: "An-Naml:59 - Al-Ankabut:44", pages: "382-402", description: "Kisah Luth AS dan nasihat untuk beribadah kepada Allah." },
                     21: { name: "۞ اتْلُ مَا أُوحِيَ إِلَيْكَ", content: "Al-Ankabut:45 - Al-Ahzab:27", pages: "402-422", description: "Ujian bagi orang beriman dan perang Ahzab." },
-                    22: { name: "يَا أَيُّهَا النَّبِيُّ قُل لِّأَزْوَاجِكَ ", content: "Al-Ahzab:28 - Akhir Fathir", pages: "422-440", description: "Akhlak Nabi Muhammad ﷺ, etika rumah tangga Nabi, dan seruan kepada manusia." },
+                    22: { name: "يَا أَيُّهَا النَّبِيُّ قُل لِّأَزْوَاجِكَ ", content: "Al-Ahzab:28 - Akhir Fathir", pages: "422-440", description: "Akhlak Nabi Muhammad ﷺ, etika rumah tangga Nabi, dan seruan kepada manusia." },
                     23: { name: "يسٓ ", content: "Yasin:1 - Az-Zumar:31", pages: "440-461", description: "Hari pembalasan, pentingnya amal shalih dan ikhlas dalam beribadah." },
                     24: { name: "۞ فَمَنْ أَظْلَمُ مِمَّن كَذَبَ", content: "Az-Zumar:32 - Akhir Fushshilat", pages: "462-482", description: "Balasan bagi orang yang berbuat zalim dan tanda-tanda kekuasaan Allah." },
                     25: { name: "حمٓ ", content: "Asy Syura:1 - Al-Jatsiyah:37", pages: "482-502", description: "Semua urusan dikembalikan kepada Allah dan hari pembalasan." },
@@ -835,68 +799,78 @@
                 programStartDate: new Date('2025-07-01'),
 
                 async init() {
-                    this.isLoading = true;
+                    console.log('🚀 Starting One Day One Juz App...');
+                    this.loadingMessage = 'Memulai aplikasi...';
                     
                     try {
-                        // Test Supabase connection
+                        // Test Supabase connection with timeout
+                        this.loadingMessage = 'Mencoba koneksi Supabase...';
                         await this.testSupabaseConnection();
                         
                         // Load data from Supabase
+                        this.loadingMessage = 'Memuat data dari Supabase...';
                         await this.loadDataFromSupabase();
-                        
-                        // Setup real-time subscriptions
-                        this.setupRealtimeListeners();
                         
                         this.connectionStatus = 'online';
                         this.supabaseConnected = true;
+                        console.log('✅ Supabase mode activated');
                         
                     } catch (error) {
-                        console.error('Supabase connection failed:', error);
-                        this.supabaseError = error.message;
+                        console.log('🟠 Supabase connection failed, using offline mode:', error.message);
                         this.connectionStatus = 'offline';
+                        this.supabaseConnected = false;
                         
                         // Fallback to localStorage
+                        this.loadingMessage = 'Mode offline - memuat data lokal...';
                         this.loadDataFromLocal();
-                        
-                        // Show error modal if it's a config issue
-                        if (error.message.includes('supabase.co') || error.message.includes('credentials')) {
-                            this.showSupabaseError = true;
-                        }
                     }
                     
                     // Check announcement
+                    this.loadingMessage = 'Menyiapkan pengumuman...';
                     this.checkAnnouncementStatus();
                     
                     // Setup months
+                    this.loadingMessage = 'Menyiapkan data bulanan...';
                     this.generateAvailableMonths();
                     this.selectedMonth = this.getCurrentMonth();
                     this.updateMonthlyData();
                     
-                    setTimeout(() => {
-                        this.isLoading = false;
-                    }, 500);
+                    // Final setup
+                    this.loadingMessage = 'Menyelesaikan setup...';
+                    await this.delay(500);
+                    
+                    this.isLoading = false;
+                    console.log('✅ App loaded successfully');
+                },
+
+                delay(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
                 },
 
                 async testSupabaseConnection() {
-                    try {
-                        // Test connection by fetching participants
-                        const { data, error } = await window.supabaseClient
-                            .from('participants')
-                            .select('count')
-                            .limit(1);
-                            
-                        if (error) {
-                            throw new Error(`Supabase connection failed: ${error.message}`);
-                        }
-                        
-                        console.log('✅ Supabase connection successful');
-                        return true;
-                    } catch (error) {
-                        if (error.message.includes('YOUR_PROJECT_ID') || error.message.includes('YOUR_ANON_KEY')) {
-                            throw new Error('Supabase credentials belum diganti. Update SUPABASE_URL dan SUPABASE_ANON_KEY di kode.');
-                        }
-                        throw error;
+                    if (!window.supabaseClient) {
+                        throw new Error('Supabase client not available');
                     }
+                    
+                    // Create timeout promise
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Connection timeout')), 3000)
+                    );
+                    
+                    // Test connection promise
+                    const testPromise = window.supabaseClient
+                        .from('participants')
+                        .select('count')
+                        .limit(1);
+                    
+                    const { data, error } = await Promise.race([testPromise, timeoutPromise]);
+                    
+                    if (error) {
+                        throw new Error(`Supabase connection failed: ${error.message}`);
+                    }
+                    
+                    console.log('✅ Supabase connection successful');
+                    return true;
                 },
 
                 async loadDataFromSupabase() {
@@ -908,7 +882,9 @@
                             .order('id');
                             
                         if (participantsError) throw participantsError;
-                        this.participants = participants;
+                        if (participants && participants.length > 0) {
+                            this.participants = participants;
+                        }
 
                         // Load today's checks
                         const today = this.getTodayKey();
@@ -920,11 +896,8 @@
                         if (checksError) throw checksError;
                         
                         this.todayChecks = {};
-                        this.todayChecks[today] = todayChecks.map(check => check.participant_id);
+                        this.todayChecks[today] = todayChecks ? todayChecks.map(check => check.participant_id) : [];
 
-                        // Load monthly data
-                        await this.loadMonthlyDataFromSupabase();
-                        
                         console.log('✅ Data loaded from Supabase');
                         
                     } catch (error) {
@@ -933,133 +906,10 @@
                     }
                 },
 
-                async loadMonthlyDataFromSupabase() {
-                    try {
-                        const currentMonth = this.getCurrentMonth();
-                        const { data: monthlyStats, error } = await window.supabaseClient
-                            .from('monthly_stats')
-                            .select('*')
-                            .eq('month', currentMonth);
-                            
-                        if (error) throw error;
-                        
-                        // Convert to the format expected by the app
-                        if (!this.monthlyData[currentMonth]) {
-                            this.monthlyData[currentMonth] = {
-                                participantChecks: {},
-                                khatamDays: []
-                            };
-                        }
-                        
-                        monthlyStats.forEach(stat => {
-                            // Get participant checks for this month
-                            this.loadParticipantChecksFromSupabase(stat.participant_id, currentMonth);
-                        });
-                        
-                    } catch (error) {
-                        console.error('Error loading monthly data:', error);
-                    }
-                },
-
-                async loadParticipantChecksFromSupabase(participantId, month) {
-                    try {
-                        const startDate = `${month}-01`;
-                        const endDate = `${month}-31`;
-                        
-                        const { data: checks, error } = await window.supabaseClient
-                            .from('daily_checks')
-                            .select('check_date')
-                            .eq('participant_id', participantId)
-                            .gte('check_date', startDate)
-                            .lte('check_date', endDate);
-                            
-                        if (error) throw error;
-                        
-                        if (!this.monthlyData[month]) {
-                            this.monthlyData[month] = { participantChecks: {}, khatamDays: [] };
-                        }
-                        
-                        this.monthlyData[month].participantChecks[participantId] = 
-                            checks.map(check => check.check_date);
-                            
-                    } catch (error) {
-                        console.error('Error loading participant checks:', error);
-                    }
-                },
-
-                setupRealtimeListeners() {
-                    if (!this.supabaseConnected) return;
-                    
-                    // Listen to daily_checks changes
-                    window.supabaseClient
-                        .channel('daily_checks_channel')
-                        .on('postgres_changes', 
-                            { event: '*', schema: 'public', table: 'daily_checks' }, 
-                            (payload) => {
-                                console.log('📡 Real-time update received:', payload);
-                                this.handleRealtimeUpdate(payload);
-                            }
-                        )
-                        .subscribe();
-                        
-                    // Listen to participants changes
-                    window.supabaseClient
-                        .channel('participants_channel')
-                        .on('postgres_changes', 
-                            { event: '*', schema: 'public', table: 'participants' }, 
-                            (payload) => {
-                                console.log('📡 Participant update:', payload);
-                                this.handleParticipantUpdate(payload);
-                            }
-                        )
-                        .subscribe();
-                        
-                    console.log('🔴 Real-time listeners setup complete');
-                },
-
-                handleRealtimeUpdate(payload) {
-                    const { eventType, new: newRecord, old: oldRecord } = payload;
-                    const checkDate = newRecord?.check_date || oldRecord?.check_date;
-                    const participantId = newRecord?.participant_id || oldRecord?.participant_id;
-                    
-                    if (!this.todayChecks[checkDate]) {
-                        this.todayChecks[checkDate] = [];
-                    }
-                    
-                    if (eventType === 'INSERT') {
-                        if (!this.todayChecks[checkDate].includes(participantId)) {
-                            this.todayChecks[checkDate].push(participantId);
-                        }
-                    } else if (eventType === 'DELETE') {
-                        const index = this.todayChecks[checkDate].indexOf(participantId);
-                        if (index > -1) {
-                            this.todayChecks[checkDate].splice(index, 1);
-                        }
-                    }
-                    
-                    this.updateMonthlyRecord();
-                },
-
-                handleParticipantUpdate(payload) {
-                    const { eventType, new: newRecord, old: oldRecord } = payload;
-                    
-                    if (eventType === 'UPDATE') {
-                        const index = this.participants.findIndex(p => p.id === newRecord.id);
-                        if (index !== -1) {
-                            this.participants[index] = newRecord;
-                        }
-                    }
-                },
-
-                continueOffline() {
-                    this.showSupabaseError = false;
-                    this.connectionStatus = 'offline';
-                    this.supabaseConnected = false;
-                    this.loadDataFromLocal();
-                },
-
                 loadDataFromLocal() {
                     try {
+                        console.log('📦 Loading data from localStorage...');
+                        
                         // Load today's checks
                         const todayChecks = localStorage.getItem('quranTrackerTodayChecks');
                         if (todayChecks) {
@@ -1078,38 +928,13 @@
                             this.participants = JSON.parse(participants);
                         }
                         
-                        console.log('📦 Data loaded from localStorage');
+                        console.log('✅ Local data loaded successfully');
                         
                     } catch (error) {
-                        console.error('Error loading data from localStorage:', error);
+                        console.error('❌ Error loading local data:', error);
+                        this.todayChecks = {};
+                        this.monthlyData = {};
                     }
-                },
-
-                async saveData() {
-                    // Always save to localStorage as backup
-                    try {
-                        localStorage.setItem('quranTrackerTodayChecks', JSON.stringify(this.todayChecks));
-                        localStorage.setItem('quranTrackerMonthlyData', JSON.stringify(this.monthlyData));
-                        localStorage.setItem('quranTrackerParticipants', JSON.stringify(this.participants));
-                    } catch (error) {
-                        console.error('Error saving to localStorage:', error);
-                    }
-                    
-                    // Save to Supabase if connected
-                    if (this.supabaseConnected) {
-                        await this.saveToSupabase();
-                    }
-                    
-                    // Show save indicator
-                    this.showSaveIndicator = true;
-                    setTimeout(() => {
-                        this.showSaveIndicator = false;
-                    }, 2000);
-                },
-
-                async saveToSupabase() {
-                    // This will be called automatically through toggleCheck
-                    // No need for manual bulk save since we save individual changes
                 },
 
                 checkAnnouncementStatus() {
@@ -1164,6 +989,7 @@
                     }
                 },
 
+                // FIXED TIMEZONE FUNCTIONS
                 getCurrentDate() {
                     const now = new Date();
                     const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
@@ -1176,7 +1002,7 @@
                 },
 
                 getCurrentMonth() {
-                     const now = new Date();
+                    const now = new Date();
                     const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
                     return jakartaTime.toISOString().slice(0, 7);
                 },
@@ -1188,42 +1014,22 @@
                     return new Date(year, month, 0).getDate();
                 },
 
-                getTodayKey() {
-                    const now = new Date(); // ✅ Tambahkan definisi 'now'
-                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-                    return jakartaTime.toISOString().slice(0, 10);
-                },
-                getTodayKeyFixed() {
-                const formatter = new Intl.DateTimeFormat('sv-SE', {
-                    timeZone: 'Asia/Jakarta'
-                });
-                return formatter.format(new Date()); // Format: YYYY-MM-DD
-        },
-
                 getDaysSinceStart() {
-                        const now = new Date();
-                // Konversi ke timezone Jakarta
-                const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-                // Program start dalam timezone Jakarta
-                const programStart = new Date('2025-07-01T00:00:00+07:00');
-                const diffTime = jakartaTime - programStart;
-                return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            },
-                getDaysSinceStartFixed() {
-                    const today = new Date();
-                    const jakartaToday = new Date(today.toLocaleString('en-US', {timeZone: 'Asia/Jakarta'}));
-                    const programStart = new Date('2025-07-01');
-                    const diffTime = jakartaToday - programStart;
+                    const now = new Date();
+                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    const programStart = new Date('2025-07-01T00:00:00+07:00');
+                    const diffTime = jakartaTime - programStart;
                     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 },
-    
+
                 getRotatedParticipants() {
                     const daysSinceStart = this.getDaysSinceStart();
                     const rotated = [...this.participants];
+                    
                     for (let i = 0; i < daysSinceStart % 30; i++) {
                         rotated.unshift(rotated.pop());
                     }
-
+                    
                     return rotated;
                 },
 
@@ -1304,9 +1110,10 @@
                 },
 
                 getTodayKey() {
-                  const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    const now = new Date();
+                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
                     return jakartaTime.toISOString().slice(0, 10);
-                    },  
+                },
 
                 getTodayCompleted() {
                     const today = this.getTodayKey();
@@ -1408,6 +1215,17 @@
                     return total;
                 },
 
+                async saveData() {
+                    // Always save to localStorage as backup
+                    try {
+                        localStorage.setItem('quranTrackerTodayChecks', JSON.stringify(this.todayChecks));
+                        localStorage.setItem('quranTrackerMonthlyData', JSON.stringify(this.monthlyData));
+                        localStorage.setItem('quranTrackerParticipants', JSON.stringify(this.participants));
+                    } catch (error) {
+                        console.error('Error saving to localStorage:', error);
+                    }
+                },
+
                 // Admin functions
                 adminLogin() {
                     if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
@@ -1427,13 +1245,14 @@
 
                 generateWhatsAppExport() {
                     const now = new Date();
-                    const dateStr = now.toLocaleDateString('id-ID', {
+                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    const dateStr = jakartaTime.toLocaleDateString('id-ID', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                     });
-                    const timeStr = now.toLocaleTimeString('id-ID', {
+                    const timeStr = jakartaTime.toLocaleTimeString('id-ID', {
                         hour: '2-digit',
                         minute: '2-digit'
                     });
