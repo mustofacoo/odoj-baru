@@ -14,20 +14,44 @@
         
         // Firebase configuration - GANTI DENGAN CONFIG FIREBASE ANDA YANG BENAR
         const firebaseConfig = {
-  apiKey: "AIzaSyAzz07O8d_e4QoHyChM-B3l5qcFHgMYM8Y",
-  authDomain: "odoj1-ba70c.firebaseapp.com",
- databaseURL: "https://odoj1-ba70c-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "odoj1-ba70c",
-  storageBucket: "odoj1-ba70c.firebasestorage.app",
-  messagingSenderId: "462428308785",
-  appId: "1:462428308785:web:5eca82bdd6fe1151c2dc10"
-};
-
+            apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
+            authDomain: "odoj-halaqah1.firebaseapp.com",
+            databaseURL: "https://odoj-halaqah1-default-rtdb.firebaseio.com/",
+            projectId: "odoj-halaqah1",
+            storageBucket: "odoj-halaqah1.firebasestorage.app",
+            messagingSenderId: "268720571471",
+            appId: "1:268720571471:web:7c534d4996873fbbaed63a"
+        };
+        
+        console.log('🔥 Starting Firebase initialization...');
+        console.log('📋 Config:', {
+            hasApiKey: !!firebaseConfig.apiKey,
+            hasAuthDomain: !!firebaseConfig.authDomain,
+            hasDatabaseURL: !!firebaseConfig.databaseURL,
+            hasProjectId: !!firebaseConfig.projectId,
+            databaseURL: firebaseConfig.databaseURL
+        });
         
         try {
+            // Validate required fields
+            if (!firebaseConfig.databaseURL) {
+                throw new Error('databaseURL is required for Realtime Database');
+            }
+            
+            if (!firebaseConfig.databaseURL.includes('firebasedatabase.app')) {
+                throw new Error('databaseURL format seems incorrect. Should be: https://PROJECT-ID-default-rtdb.REGION.firebasedatabase.app/');
+            }
+            
             // Initialize Firebase
+            console.log('📱 Initializing Firebase app...');
             const app = initializeApp(firebaseConfig);
+            
+            console.log('🗄️ Getting database instance...');
             const database = getDatabase(app);
+            
+            // Test database connection immediately
+            console.log('🔍 Testing database connection...');
+            const testRef = ref(database, '.info/connected');
             
             // Make Firebase available globally
             window.firebase = { 
@@ -41,16 +65,35 @@
                 update, 
                 remove,
                 initialized: true,
-                error: null
+                error: null,
+                config: firebaseConfig
             };
             
-            console.log('Firebase initialized successfully');
+            console.log('✅ Firebase initialized successfully');
+            
+            // Monitor connection status
+            onValue(testRef, (snapshot) => {
+                const connected = snapshot.val();
+                console.log('🔗 Firebase connection status:', connected ? 'CONNECTED' : 'DISCONNECTED');
+                if (window.firebaseConnectionCallback) {
+                    window.firebaseConnectionCallback(connected);
+                }
+            });
             
         } catch (error) {
-            console.error('Firebase initialization failed:', error);
+            console.error('❌ Firebase initialization failed:', error);
+            console.error('🔍 Error details:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                stack: error.stack
+            });
+            
             window.firebase = {
                 initialized: false,
-                error: error.message
+                error: error.message,
+                errorCode: error.code,
+                config: firebaseConfig
             };
         }
     </script>
@@ -336,7 +379,36 @@
                     </div>
                     <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-6 text-left">
                         <h3 class="font-semibold text-red-800 mb-2">🚨 Error Detail:</h3>
-                        <p class="text-sm text-red-700" x-text="firebaseError || 'Firebase tidak dapat diinisialisasi'"></p>
+                        <div class="text-sm text-red-700 space-y-1">
+                            <p><strong>Error:</strong> <span x-text="firebaseError || 'Firebase tidak dapat diinisialisasi'"></span></p>
+                            <p x-show="firebaseErrorCode"><strong>Code:</strong> <span x-text="firebaseErrorCode"></span></p>
+                            <div x-show="firebaseConfig" class="mt-2">
+                                <p><strong>Config Status:</strong></p>
+                                <ul class="list-disc list-inside ml-2 space-y-1">
+                                    <li>API Key: <span x-text="firebaseConfig?.hasApiKey ? '✅ Ada' : '❌ Tidak ada'"></span></li>
+                                    <li>Database URL: <span x-text="firebaseConfig?.hasDatabaseURL ? '✅ Ada' : '❌ Tidak ada'"></span></li>
+                                    <li>Project ID: <span x-text="firebaseConfig?.hasProjectId ? '✅ Ada' : '❌ Tidak ada'"></span></li>
+                                </ul>
+                                <p class="mt-2"><strong>Database URL:</strong> <span class="text-xs break-all" x-text="firebaseConfig?.databaseURL || 'Tidak tersedia'"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6 text-left">
+                        <h3 class="font-semibold text-blue-800 mb-2">🔧 Langkah Perbaikan:</h3>
+                        <ol class="list-decimal list-inside space-y-1 text-sm text-blue-700">
+                            <li>Buka <strong>Firebase Console</strong> → Project Settings</li>
+                            <li>Pastikan <strong>Realtime Database</strong> sudah dibuat (bukan Firestore)</li>
+                            <li>Copy config lengkap dari "Your apps" section</li>
+                            <li>Pastikan <strong>databaseURL</strong> ada dan format benar</li>
+                            <li>Set Database Rules untuk testing:
+                                <pre class="bg-blue-100 p-2 rounded mt-1 text-xs">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre>
+                            </li>
+                        </ol>
                     </div>
                     <button @click="continueOffline()" 
                             class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
@@ -777,6 +849,8 @@
                 firebaseConnected: false,
                 connectionStatus: 'connecting', // connecting, online, offline
                 firebaseError: null,
+                firebaseErrorCode: null,
+                firebaseConfig: null,
                 
                 // UI state
                 isLoading: false,
@@ -908,64 +982,109 @@
 
                 async checkFirebaseConnection() {
                     return new Promise((resolve, reject) => {
-                        // Wait for Firebase to be available
+                        let attempts = 0;
+                        const maxAttempts = 50; // 5 seconds
+                        
                         const checkFirebase = () => {
+                            attempts++;
+                            console.log(`🔍 Checking Firebase availability (attempt ${attempts}/${maxAttempts})`);
+                            
                             if (window.firebase) {
+                                console.log('📦 Firebase object found:', window.firebase);
+                                
                                 if (window.firebase.initialized) {
+                                    console.log('✅ Firebase is initialized, testing connection...');
                                     this.testFirebaseConnection()
                                         .then(() => {
                                             this.firebaseConnected = true;
                                             this.connectionStatus = 'online';
-                                            console.log('Firebase connected successfully');
+                                            console.log('🎉 Firebase connected successfully');
                                             resolve();
                                         })
                                         .catch(error => {
+                                            console.error('❌ Firebase connection test failed:', error);
                                             this.firebaseError = error.message;
+                                            this.firebaseErrorCode = error.code;
                                             reject(error);
                                         });
                                 } else {
+                                    console.error('❌ Firebase initialization failed');
                                     this.firebaseError = window.firebase.error || 'Firebase initialization failed';
+                                    this.firebaseErrorCode = window.firebase.errorCode;
+                                    this.firebaseConfig = {
+                                        hasApiKey: !!window.firebase.config?.apiKey,
+                                        hasDatabaseURL: !!window.firebase.config?.databaseURL,
+                                        hasProjectId: !!window.firebase.config?.projectId,
+                                        databaseURL: window.firebase.config?.databaseURL
+                                    };
                                     reject(new Error('Firebase initialization failed: ' + this.firebaseError));
                                 }
+                            } else if (attempts >= maxAttempts) {
+                                console.error('⏰ Firebase loading timeout');
+                                this.firebaseError = 'Firebase loading timeout - CDN mungkin bermasalah';
+                                reject(new Error('Firebase loading timeout'));
                             } else {
                                 setTimeout(checkFirebase, 100);
                             }
                         };
                         
-                        checkFirebase();
-                        
-                        // Timeout after 5 seconds
-                        setTimeout(() => {
-                            if (!this.firebaseConnected) {
-                                reject(new Error('Firebase connection timeout'));
+                        // Setup connection status callback
+                        window.firebaseConnectionCallback = (connected) => {
+                            if (connected && this.connectionStatus !== 'online') {
+                                console.log('🔗 Firebase real-time connection established');
+                                this.connectionStatus = 'online';
+                            } else if (!connected && this.connectionStatus === 'online') {
+                                console.log('📡 Firebase connection lost');
+                                this.connectionStatus = 'offline';
                             }
-                        }, 5000);
+                        };
+                        
+                        checkFirebase();
                     });
                 },
 
                 async testFirebaseConnection() {
                     try {
-                        // Test both read and write operations
-                        const testRef = window.firebase.ref(window.firebase.database, 'connection-test');
+                        console.log('🧪 Testing Firebase read/write operations...');
                         
                         // Test write
-                        await window.firebase.set(testRef, {
+                        const testRef = window.firebase.ref(window.firebase.database, 'connection-test');
+                        const testData = {
                             timestamp: Date.now(),
-                            status: 'connected'
-                        });
+                            status: 'connected',
+                            userAgent: navigator.userAgent.substring(0, 50)
+                        };
+                        
+                        console.log('✍️ Testing write operation...');
+                        await window.firebase.set(testRef, testData);
+                        console.log('✅ Write operation successful');
                         
                         // Test read
+                        console.log('📖 Testing read operation...');
                         const snapshot = await window.firebase.get(testRef);
                         if (!snapshot.exists()) {
                             throw new Error('Failed to read test data from Firebase');
                         }
+                        console.log('✅ Read operation successful:', snapshot.val());
                         
                         // Clean up test data
+                        console.log('🧹 Cleaning up test data...');
                         await window.firebase.set(testRef, null);
+                        console.log('✅ Cleanup successful');
                         
                         return true;
                     } catch (error) {
-                        console.error('Firebase connection test failed:', error);
+                        console.error('❌ Firebase connection test failed:', error);
+                        
+                        // Provide more specific error messages
+                        if (error.code === 'PERMISSION_DENIED') {
+                            throw new Error(`Database rules terlalu ketat. Set rules: {"rules": {".read": true, ".write": true}}`);
+                        } else if (error.code === 'NETWORK_ERROR') {
+                            throw new Error('Masalah jaringan atau Firebase server tidak dapat diakses');
+                        } else if (error.message.includes('databaseURL')) {
+                            throw new Error('databaseURL tidak valid atau Realtime Database belum dibuat');
+                        }
+                        
                         throw new Error(`Firebase connection failed: ${error.message}`);
                     }
                 },
