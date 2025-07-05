@@ -1165,16 +1165,20 @@
                 },
 
                 getCurrentDate() {
-                    return new Date().toLocaleDateString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
-                },
+                    const now = new Date();
+                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    return jakartaTime.toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+},
 
                 getCurrentMonth() {
-                    return new Date().toISOString().slice(0, 7);
+                       const now = new Date();
+                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    return jakartaTime.toISOString().slice(0, 7);
                 },
 
                 getDaysInMonth(monthString = null) {
@@ -1184,20 +1188,38 @@
                     return new Date(year, month, 0).getDate();
                 },
 
+                getTodayKeyFixed() {
+                const formatter = new Intl.DateTimeFormat('sv-SE', {
+                    timeZone: 'Asia/Jakarta'
+                });
+                return formatter.format(new Date()); // Format: YYYY-MM-DD
+        },
+
                 getDaysSinceStart() {
-                    const today = new Date();
-                    const diffTime = today - this.programStartDate;
-                    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    const now = new Date();
+                      // Konversi ke timezone Jakarta
+                     const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                        // Program start dalam timezone Jakarta
+                    const programStart = new Date('2025-07-01T00:00:00+07:00');
+                     const diffTime = jakartaTime - programStart;
+                     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 },
 
+                getDaysSinceStartFixed() {
+                    const today = new Date();
+                    const jakartaToday = new Date(today.toLocaleString('en-US', {timeZone: 'Asia/Jakarta'}));
+                    const programStart = new Date('2025-07-01');
+                    const diffTime = jakartaToday - programStart;
+                    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                },
+    
                 getRotatedParticipants() {
                     const daysSinceStart = this.getDaysSinceStart();
                     const rotated = [...this.participants];
-                    
                     for (let i = 0; i < daysSinceStart % 30; i++) {
                         rotated.unshift(rotated.pop());
                     }
-                    
+            
                     return rotated;
                 },
 
@@ -1278,8 +1300,9 @@
                 },
 
                 getTodayKey() {
-                    return new Date().toISOString().slice(0, 10);
-                },
+                  const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    return jakartaTime.toISOString().slice(0, 10);
+                    },  
 
                 getTodayCompleted() {
                     const today = this.getTodayKey();
