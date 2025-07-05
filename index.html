@@ -10,24 +10,47 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, onValue, push, update, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, set, get, onValue, push, update, remove, connectDatabaseEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        // Firebase configuration - GANTI DENGAN CONFIG FIREBASE ANDA
-           const firebaseConfig = {
-          apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
-          authDomain: "odoj-halaqah1.firebaseapp.com",
-          projectId: "odoj-halaqah1",
-          storageBucket: "odoj-halaqah1.firebasestorage.app",
-          messagingSenderId: "268720571471",
-          appId: "1:268720571471:web:7c534d4996873fbbaed63a"
-        };
+        // Firebase configuration - GANTI DENGAN CONFIG FIREBASE ANDA YANG BENAR
+      const firebaseConfig = {
+  apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
+  authDomain: "odoj-halaqah1.firebaseapp.com",
+  projectId: "odoj-halaqah1",
+  storageBucket: "odoj-halaqah1.firebasestorage.app",
+  messagingSenderId: "268720571471",
+  appId: "1:268720571471:web:7c534d4996873fbbaed63a"
+};
         
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        
-        // Make Firebase available globally
-        window.firebase = { database, ref, set, get, onValue, push, update, remove };
+        try {
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
+            
+            // Make Firebase available globally
+            window.firebase = { 
+                app,
+                database, 
+                ref, 
+                set, 
+                get, 
+                onValue, 
+                push, 
+                update, 
+                remove,
+                initialized: true,
+                error: null
+            };
+            
+            console.log('Firebase initialized successfully');
+            
+        } catch (error) {
+            console.error('Firebase initialization failed:', error);
+            window.firebase = {
+                initialized: false,
+                error: error.message
+            };
+        }
     </script>
     
     <style>
@@ -269,6 +292,7 @@
             <div class="bg-white rounded-lg p-6 text-center">
                 <div class="spinner mx-auto mb-4"></div>
                 <p class="text-gray-600">Memuat data...</p>
+                <p x-show="loadingMessage" class="text-sm text-gray-500 mt-2" x-text="loadingMessage"></p>
             </div>
         </div>
 
@@ -281,7 +305,7 @@
              }"
              x-show="connectionStatus !== 'online'">
             <span x-show="connectionStatus === 'connecting'">🔄 Menghubungkan...</span>
-            <span x-show="connectionStatus === 'offline'">❌ Offline</span>
+            <span x-show="connectionStatus === 'offline'">❌ Mode Offline</span>
         </div>
 
         <!-- Firebase Configuration Modal -->
@@ -295,17 +319,26 @@
              class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 modal-backdrop p-4">
             <div class="bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full card-shadow">
                 <div class="text-center">
-                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🔧 Konfigurasi Firebase</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🔧 Konfigurasi Firebase Diperlukan</h2>
                     <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg mb-6 text-left">
-                        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Perhatian!</h3>
-                        <p class="text-sm text-yellow-700">
-                            Untuk menggunakan fitur sinkronisasi realtime, Anda perlu mengkonfigurasi Firebase terlebih dahulu. 
-                            Edit kode JavaScript di bagian firebaseConfig dengan kredensial Firebase Anda.
-                        </p>
+                        <h3 class="font-semibold text-yellow-800 mb-2">⚠️ Penting!</h3>
+                        <div class="text-sm text-yellow-700 space-y-2">
+                            <p>Firebase belum dikonfigurasi dengan benar. Untuk mengaktifkan sinkronisasi realtime:</p>
+                            <ol class="list-decimal list-inside space-y-1 ml-2">
+                                <li>Buat project baru di <strong>Firebase Console</strong></li>
+                                <li>Aktifkan <strong>Realtime Database</strong></li>
+                                <li>Salin config dan ganti di kode JavaScript</li>
+                                <li>Pastikan <strong>databaseURL</strong> tersedia</li>
+                            </ol>
+                        </div>
                     </div>
-                    <button @click="showFirebaseConfig = false" 
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-6 text-left">
+                        <h3 class="font-semibold text-red-800 mb-2">🚨 Error Detail:</h3>
+                        <p class="text-sm text-red-700" x-text="firebaseError || 'Firebase tidak dapat diinisialisasi'"></p>
+                    </div>
+                    <button @click="continueOffline()" 
                             class="w-full btn-primary text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-red-600 transition-all duration-300">
-                        Mengerti, Lanjutkan
+                        📱 Lanjutkan Mode Offline
                     </button>
                 </div>
             </div>
@@ -412,19 +445,8 @@
             </div>
         </header>
 
-        <!-- Countdown Timer -->
-        <div class="container mx-auto px-4 py-4">
-            <div class="bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl p-4 md:p-6 card-shadow">
-                <div class="text-center">
-                    <h3 class="text-base md:text-lg font-semibold mb-2">⏰ Membaca Al Qur'an akan memberkahi waktu yang kita miliki, bukan menguranginya ^^</h3>
-                    <div class="countdown-timer text-2xl md:text-4xl mb-2" x-text="formatCountdown()"></div>
-                    <p class="text-gray-300 text-sm md:text-base" x-text="countdownText"></p>
-                </div>
-            </div>
-        </div>
-
         <!-- Stats -->
-        <div class="container mx-auto px-4 mb-6">
+        <div class="container mx-auto px-4 py-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white rounded-xl p-4 md:p-6 card-shadow">
                     <div class="flex items-center">
@@ -673,8 +695,9 @@
                         <h4 class="text-lg font-semibold text-blue-800 mb-3">🔥 Status Firebase</h4>
                         <div class="space-y-2 text-sm">
                             <p><strong>Koneksi:</strong> <span :class="connectionStatus === 'online' ? 'text-green-600' : 'text-red-600'" x-text="connectionStatus === 'online' ? 'Terhubung' : 'Terputus'"></span></p>
-                            <p><strong>Sinkronisasi:</strong> <span x-text="firebaseConnected ? 'Aktif' : 'Nonaktif'" :class="firebaseConnected ? 'text-green-600' : 'text-red-600'"></span></p>
+                            <p><strong>Sinkronisasi:</strong> <span x-text="firebaseConnected ? 'Aktif' : 'Mode Offline'" :class="firebaseConnected ? 'text-green-600' : 'text-orange-600'"></span></p>
                             <p><strong>Total Peserta:</strong> <span x-text="participants.length"></span></p>
+                            <p x-show="firebaseError"><strong>Error:</strong> <span class="text-red-600" x-text="firebaseError"></span></p>
                         </div>
                     </div>
                 </div>
@@ -730,13 +753,13 @@
 
         <!-- Floating Action Buttons -->
         <div class="floating-buttons">
-            <a href="https://wa.me/628123456789?text=Assalamu'alaikum, saya ingin bertanya-tanya tentang (isi topik pertanyaan...)" 
+            <a href="https://wa.me/6281334989001?text=Assalamu'alaikum, saya ingin bertanya-tanya tentang (isi topik pertanyaan...)" 
                target="_blank" 
                class="floating-btn whatsapp-btn" 
                title="Tanya Jawab WhatsApp">
                 <span class="text-xl">💬</span>
             </a>
-            <a href="https://example.com/donasi" 
+            <a href="https://sites.google.com/view/keluargaquran/home" 
                target="_blank"
                class="floating-btn donate-btn" 
                title="Infaq">
@@ -751,9 +774,11 @@
                 // Firebase connection
                 firebaseConnected: false,
                 connectionStatus: 'connecting', // connecting, online, offline
+                firebaseError: null,
                 
                 // UI state
                 isLoading: false,
+                loadingMessage: '',
                 showFirebaseConfig: false,
                 showAnnouncement: false,
                 showEditParticipant: false,
@@ -777,35 +802,35 @@
                 // Detail setiap juz
                 juzDetails: {
                     1: { name: "Al Fatihah", content: "Al-Fatihah - Al-Baqarah:141", pages: "1-21", description: "Doa meminta petunjuk (Al-Fatihah), ciri orang bertakwa, kisah Bani Israil sebagai pelajaran bagi umat Islam." },
-                    2: { name: " سَيَقُولُ ٱلسُّفَهَآءُ", content: "Al-Baqarah:142-252", pages: "22-41", description: "Perintah puasa Ramadhan, hukum qishash, infaq, dan jihad. Keutamaan sabar dan kesatuan arah ibadah." },
-                    3: { name: "۞ تِلْكَ ٱلرُّسُلُ فَضَّلْنَا", content: "Al-Baqarah:253 - Ali Imran:92", pages: "42-61", description: "Kisah Nabi Musa, Nabi Isa, dan perjuangan para nabi. Anjuran bersedekah dan meninggalkan riba." },
-                    4: { name: " كُلُّ ٱلطَّعَامِ", content: "Ali Imran:93 - An-Nisa:23", pages: "62-82", description: "Perang Uhud, akhlak dalam kemenangan dan kekalahan, serta tanggung jawab individu." },
-                    5: { name: "حُرِّمَتْ عَلَيْكُمْ", content: "An-Nisa:24-147", pages: "82-101", description: "Warisan, poligami, perlindungan anak yatim, loyalitas kepada Allah dan Rasul-Nya." },
-                    6: { name: " لَّا يُحِبُّ ٱللَّهُ", content: "An-Nisa:148 - Al-Maidah:81", pages: "101-121", description: "Larangan berbuat zalim, hukum halal-haram, dan kisah Bani Israil yang ingkar." },
-                    7: { name: "۞ لَتَجِدَنَّ أَشَدَّ ٱلنَّاسِ", content: "Al-Maidah:82 - Al-An'am:107", pages: "122-141", description: "Pujian untuk ahli kitab yang beriman dan dalil-dalil tentang keesaan Allah." },
-                    8: { name: "وَلَا تَسُبُّوا۟ ٱلَّذِينَ", content: "Al-An'am:108 - Al-A'raf:84", pages: "141-161", description: "Bantahan terhadap orang musyrik dan kisah para nabi dalam berdakwah." },
+                    2: { name: " سَيَقُولُ ٱلسُّفَهَآءُ", content: "Al-Baqarah:142-252", pages: "22-41", description: "Perintah puasa Ramadhan, hukum qishash, infaq, dan jihad. Keutamaan sabar dan kesatuan arah ibadah." },
+                    3: { name: "۞ تِلْكَ ٱلرُّسُلُ فَضَّلْنَا", content: "Al-Baqarah:253 - Ali Imran:92", pages: "42-61", description: "Kisah Nabi Musa, Nabi Isa, dan perjuangan para nabi. Anjuran bersedekah dan meninggalkan riba." },
+                    4: { name: " كُلُّ ٱلطَّعَامِ", content: "Ali Imran:93 - An-Nisa:23", pages: "62-82", description: "Perang Uhud, akhlak dalam kemenangan dan kekalahan, serta tanggung jawab individu." },
+                    5: { name: "حُرِّمَتْ عَلَيْكُمْ", content: "An-Nisa:24-147", pages: "82-101", description: "Warisan, poligami, perlindungan anak yatim, loyalitas kepada Allah dan Rasul-Nya." },
+                    6: { name: " لَّا يُحِبُّ ٱللَّهُ", content: "An-Nisa:148 - Al-Maidah:81", pages: "101-121", description: "Larangan berbuat zalim, hukum halal-haram, dan kisah Bani Israil yang ingkar." },
+                    7: { name: "۞ لَتَجِدَنَّ أَشَدَّ ٱلنَّاسِ", content: "Al-Maidah:82 - Al-An'am:107", pages: "122-141", description: "Pujian untuk ahli kitab yang beriman dan dalil-dalil tentang keesaan Allah." },
+                    8: { name: "وَلَا تَسُبُّوا۟ ٱلَّذِينَ", content: "Al-An'am:108 - Al-A'raf:84", pages: "141-161", description: "Bantahan terhadap orang musyrik dan kisah para nabi dalam berdakwah." },
                     9: { name: "وَإِلَىٰ مَدْيَنَ أَخَاهُمْ", content: "Al-A'raf:85 - Al-Anfal:40", pages: "161-181", description: "Lanjutan kisah para nabi dan perang Badr sebagai pertolongan Allah." },
-                    10: { name: "۞ وَٱعْلَمُوٓا۟ أَنَّمَا", content: "Al-Anfal:41 - At-Taubah:89", pages: "182-201", description: "Hukum pembagian ghanimah, perang Tabuk, dan sikap terhadap orang munafik." },
-                    11: { name: "وَجَآءَ ٱلْمُعَذِّرُونَ", content: "At-Taubah:90 - Yunus:109", pages: "201-221", description: "Sikap terhadap orang yang tidak ikut jihad dan kisah Nabi Yunus AS." },
+                    10: { name: "۞ وَٱعْلَمُوٓا۟ أَنَّمَا", content: "Al-Anfal:41 - At-Taubah:89", pages: "182-201", description: "Hukum pembagian ghanimah, perang Tabuk, dan sikap terhadap orang munafik." },
+                    11: { name: "وَجَآءَ ٱلْمُعَذِّرُونَ", content: "At-Taubah:90 - Yunus:109", pages: "201-221", description: "Sikap terhadap orang yang tidak ikut jihad dan kisah Nabi Yunus AS." },
                     12: { name: "الٓر ۚ كِتَـٰبٌ أُحْكِمَتْ", content: "Hud:1 - Yusuf:57", pages: "222-242", description: "Kisah Nabi Nuh, Hud, Shalih, dan Yusuf sebagai teladan dalam ujian hidup." },
-                    13: { name: "وَجَآءَ إِخْوَةُ يُوسُفَ", content: "Yusuf:58 - Ibrahim:52", pages: "242-261", description: "Lanjutan kisah Yusuf AS di Mesir dan kisah Ibrahim AS dengan kaumnya." },
+                    13: { name: "وَجَآءَ إِخْوَةُ يُوسُفَ", content: "Yusuf:58 - Ibrahim:52", pages: "242-261", description: "Lanjutan kisah Yusuf AS di Mesir dan kisah Ibrahim AS dengan kaumnya." },
                     14: { name: "الٓر ۚ تِلْكَ ءَايَـٰتُ", content: "Al-Hijr:1 - An-Nahl:128", pages: "262-281", description: "Azab untuk kaum yang mendustakan dan nikmat-nikmat Allah yang tak terhitung." },
-                    15: { name: "سُبْحَـٰنَ ٱلَّذِىٓ أَسْرَىٰ", content: "Al-Isra:1 - Al-Kahf:82", pages: "281-302", description: "Isra Mi'raj, kisah Ashab al-Kahf, dan Dzulqarnain." },
-                    16: { name: "وَيَسْـَٔلُونَكَ عَن ذِى ٱلْقَرْنَيْنِ ۖ", content: "Al-Kahf:83 - Taha:135", pages: "302-321", description: "Kisah Musa dan Khidr, serta Musa AS dengan Fir'aun." },
-                    17: { name: "ٱقْتَرَبَ لِلنَّاسِ", content: "Al-Anbiya:1 - Al-Hajj:78", pages: "322-341", description: "Kisah para nabi dan keutamaan ibadah haji." },
+                    15: { name: "سُبْحَـٰنَ ٱلَّذِىٓ أَسْرَىٰ", content: "Al-Isra:1 - Al-Kahf:82", pages: "281-302", description: "Isra Mi'raj, kisah Ashab al-Kahf, dan Dzulqarnain." },
+                    16: { name: "وَيَسْـَٔلُونَكَ عَن ذِى ٱلْقَرْنَيْنِ ۖ", content: "Al-Kahf:83 - Taha:135", pages: "302-321", description: "Kisah Musa dan Khidr, serta Musa AS dengan Fir'aun." },
+                    17: { name: "ٱقْتَرَبَ لِلنَّاسِ", content: "Al-Anbiya:1 - Al-Hajj:78", pages: "322-341", description: "Kisah para nabi dan keutamaan ibadah haji." },
                     18: { name: "قَدْ أَفْلَحَ ٱلْمُؤْمِنُونَ", content: "Al-Mu'minun:1 - Al-Furqan:20", pages: "342-361", description: "Sifat-sifat orang mukmin dan kritik terhadap orang kafir." },
-                    19: { name: "۞ وَقَالَ ٱلَّذِينَ لَا يَرْجُونَ", content: "Al-Furqan:21 - An-Naml:58", pages: "362-382", description: "Bantahan terhadap orang kafir dan kisah Nabi Sulaiman AS." },
-                    20: { name: "قُلِ ٱلْحَمْدُ لِلَّهِ", content: "An-Naml:59 - Al-Ankabut:45", pages: "382-402", description: "Kisah Luth AS dan nasihat untuk beribadah kepada Allah." },
+                    19: { name: "۞ وَقَالَ ٱلَّذِينَ لَا يَرْجُونَ", content: "Al-Furqan:21 - An-Naml:58", pages: "362-382", description: "Bantahan terhadap orang kafir dan kisah Nabi Sulaiman AS." },
+                    20: { name: "قُلِ ٱلْحَمْدُ لِلَّهِ", content: "An-Naml:59 - Al-Ankabut:45", pages: "382-402", description: "Kisah Luth AS dan nasihat untuk beribadah kepada Allah." },
                     21: { name: "۞ وَلَا تُجَـٰدِلُوٓا۟ ", content: "Al-Ankabut:46 - Al-Ahzab:34", pages: "402-422", description: "Ujian bagi orang beriman dan perang Ahzab." },
-                    22: { name: "إِنَّ ٱلْمُسْلِمِينَ وَٱلْمُسْلِمَـٰتِ", content: "Al-Ahzab:35 - Akhir Fathir", pages: "422-440", description: "Kedudukan istri-istri Nabi dan awal Surah Yasin." },
-                    23: { name: "يسٓ ", content: "Yasin:1 - Az-Zumar:31", pages: "440-461", description: "Keutamaan Surah Yasin dan sifat-sifat Al-Qur'an." },
-                    24: { name: "۞ فَمَنْ أَظْلَمُ مِمَّن كَذَبَ", content: "Az-Zumar:32 - Akhir Fushshilat", pages: "462-482", description: "Balasan bagi orang yang berbuat zalim dan tanda-tanda kekuasaan Allah." },
+                    22: { name: "إِنَّ ٱلْمُسْلِمِينَ وَٱلْمُسْلِمَـٰتِ", content: "Al-Ahzab:35 - Akhir Fathir", pages: "422-440", description: "Akhlak Nabi Muhammad ﷺ, etika rumah tangga Nabi, dan seruan kepada manusia." },
+                    23: { name: "يسٓ ", content: "Yasin:1 - Az-Zumar:31", pages: "440-461", description: "Hari pembalasan, pentingnya amal shalih dan ikhlas dalam beribadah." },
+                    24: { name: "۞ فَمَنْ أَظْلَمُ مِمَّن كَذَبَ", content: "Az-Zumar:32 - Akhir Fushshilat", pages: "462-482", description: "Balasan bagi orang yang berbuat zalim dan tanda-tanda kekuasaan Allah." },
                     25: { name: "حمٓ ", content: "Asy Syura:1 - Al-Jatsiyah:37", pages: "482-502", description: "Semua urusan dikembalikan kepada Allah dan hari pembalasan." },
                     26: { name: "حمٓ", content: "Al-Ahqaf:1 - akhir Ath Thur", pages: "502-520", description: "Awal surah-surah Ha Mim dan janji Allah kepada Ibrahim AS." },
-                    27: { name: "وَٱلذَّٰرِيَـٰتِ ذَرْوًۭا", content: "Adz-Dzariyat:1 - Al-Hadid:29", pages: "520-541", description: "Lanjutan kisah Ibrahim AS dan keutamaan beriman kepada Allah dan Rasul-Nya." },
-                    28: { name: "قَدْ سَمِعَ ٱللَّهُ", content: "Al-Mujadilah:1 - At-Tahrim:12", pages: "542-561", description: "Hukum zhihar, etika bermasyarakat, dan teladan dari istri-istri yang shalihah." },
-                    29: { name: "تَبَـٰرَكَ ٱلَّذِى", content: "Al-Mulk:1 - Al-Mursalat:50", pages: "562-581", description: "Kebesaran Allah dan ancaman bagi orang yang mendustakan hari pembalasan." },
-                    30: { name: "عَمَّ يَتَسَآءَلُونَ", content: "An-Naba:1 - An-Nas:6", pages: "582-604", description: "Hari kiamat, surga, neraka, dan perlindungan Allah dari godaan syaitan." }
+                    27: { name: "وَٱلذَّٰرِيَـٰتِ ذَرْوًۭا", content: "Adz-Dzariyat:1 - Al-Hadid:29", pages: "520-541", description: "Lanjutan kisah Ibrahim AS dan keutamaan beriman kepada Allah dan Rasul-Nya." },
+                    28: { name: "قَدْ سَمِعَ ٱللَّهُ", content: "Al-Mujadilah:1 - At-Tahrim:12", pages: "542-561", description: "Adab sosial, larangan menggunjing, ukhuwah, dan keteladanan para istri nabi." },
+                    29: { name: "تَبَـٰرَكَ ٱلَّذِى", content: "Al-Mulk:1 - Al-Mursalat:50", pages: "562-581", description: "Kebesaran Allah dan ancaman bagi orang yang mendustakan hari pembalasan." },
+                    30: { name: "عَمَّ يَتَسَآءَلُونَ", content: "An-Naba:1 - An-Nas:6", pages: "582-604", description: "Hari kiamat, surga, neraka, dan perlindungan Allah dari godaan syaitan." }
                 },
 
                 // State management
@@ -822,619 +847,99 @@
                 adminError: '',
                 exportText: '',
                 
-                // Countdown
-                countdown: { hours: 0, minutes: 0, seconds: 0 },
-                countdownText: '',
-                countdownInterval: null,
-                
                 // Program start date
                 programStartDate: new Date('2025-07-01'),
 
                 async init() {
                     this.isLoading = true;
+                    this.loadingMessage = 'Menginisialisasi aplikasi...';
                     
                     try {
-                        // Initialize Firebase
-                        await this.initFirebase();
+                        // Check Firebase initialization status
+                        this.loadingMessage = 'Mengecek koneksi Firebase...';
+                        await this.checkFirebaseConnection();
                         
-                        // Load participants from Firebase or use default
+                        // Load participants
+                        this.loadingMessage = 'Memuat data peserta...';
                         await this.loadParticipants();
                         
                         // Load data
+                        this.loadingMessage = 'Memuat data progress...';
                         await this.loadData();
                         
                         // Check announcement
                         this.checkAnnouncementStatus();
                         
-                        // Setup months and countdown
+                        // Setup months
                         this.generateAvailableMonths();
                         this.selectedMonth = this.getCurrentMonth();
                         this.updateMonthlyData();
-                        this.startCountdown();
                         
-                        // Setup realtime listeners
-                        this.setupRealtimeListeners();
+                        // Setup realtime listeners if Firebase connected
+                        if (this.firebaseConnected) {
+                            this.loadingMessage = 'Menyiapkan sinkronisasi realtime...';
+                            this.setupRealtimeListeners();
+                        }
+                        
+                        this.loadingMessage = 'Aplikasi siap digunakan!';
                         
                     } catch (error) {
                         console.error('Initialization error:', error);
+                        this.firebaseError = error.message;
                         this.connectionStatus = 'offline';
+                        
                         // Load data from localStorage as fallback
                         this.loadDataFromLocal();
                         this.participants = [...this.defaultParticipants];
-                    }
-                    
-                    this.isLoading = false;
-                },
-
-                async initFirebase() {
-                    try {
-                        if (!window.firebase) {
-                            throw new Error('Firebase not loaded');
-                        }
                         
-                        // Test Firebase connection
-                        const testRef = window.firebase.ref(window.firebase.database, 'test');
-                        await window.firebase.set(testRef, 'connection-test');
-                        
-                        this.firebaseConnected = true;
-                        this.connectionStatus = 'online';
-                        console.log('Firebase connected successfully');
-                        
-                    } catch (error) {
-                        console.error('Firebase initialization failed:', error);
-                        this.firebaseConnected = false;
-                        this.connectionStatus = 'offline';
-                        
-                        // Show configuration modal if Firebase config is not set
-                        if (error.message.includes('not loaded') || error.message.includes('Failed to initialize')) {
+                        // Show Firebase config modal if needed
+                        if (error.message.includes('Firebase') || error.message.includes('databaseURL')) {
                             this.showFirebaseConfig = true;
                         }
-                        throw error;
-                    }
-                },
-
-                async loadParticipants() {
-                    if (!this.firebaseConnected) {
-                        this.participants = [...this.defaultParticipants];
-                        return;
                     }
                     
-                    try {
-                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
-                        const snapshot = await window.firebase.get(participantsRef);
-                        
-                        if (snapshot.exists()) {
-                            this.participants = Object.values(snapshot.val());
-                        } else {
-                            // Initialize with default participants
-                            this.participants = [...this.defaultParticipants];
-                            await this.saveParticipants();
-                        }
-                    } catch (error) {
-                        console.error('Error loading participants:', error);
-                        this.participants = [...this.defaultParticipants];
-                    }
-                },
-
-                async saveParticipants() {
-                    if (!this.firebaseConnected) return;
-                    
-                    try {
-                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
-                        const participantsObj = {};
-                        this.participants.forEach(p => {
-                            participantsObj[p.id] = p;
-                        });
-                        await window.firebase.set(participantsRef, participantsObj);
-                    } catch (error) {
-                        console.error('Error saving participants:', error);
-                    }
-                },
-
-                setupRealtimeListeners() {
-                    if (!this.firebaseConnected) return;
-                    
-                    // Listen to participants changes
-                    const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
-                    window.firebase.onValue(participantsRef, (snapshot) => {
-                        if (snapshot.exists()) {
-                            this.participants = Object.values(snapshot.val());
-                        }
-                    });
-                    
-                    // Listen to today checks
-                    const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                    window.firebase.onValue(todayChecksRef, (snapshot) => {
-                        if (snapshot.exists()) {
-                            this.todayChecks = snapshot.val();
-                        }
-                    });
-                    
-                    // Listen to monthly data
-                    const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                    window.firebase.onValue(monthlyDataRef, (snapshot) => {
-                        if (snapshot.exists()) {
-                            this.monthlyData = snapshot.val();
-                        }
-                    });
-                },
-
-                async loadData() {
-                    if (!this.firebaseConnected) {
-                        this.loadDataFromLocal();
-                        return;
-                    }
-                    
-                    try {
-                        // Load today's checks
-                        const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                        const todaySnapshot = await window.firebase.get(todayChecksRef);
-                        if (todaySnapshot.exists()) {
-                            this.todayChecks = todaySnapshot.val();
-                        }
-                        
-                        // Load monthly data
-                        const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                        const monthlySnapshot = await window.firebase.get(monthlyDataRef);
-                        if (monthlySnapshot.exists()) {
-                            this.monthlyData = monthlySnapshot.val();
-                        }
-                        
-                    } catch (error) {
-                        console.error('Error loading data from Firebase:', error);
-                        this.loadDataFromLocal();
-                    }
-                },
-
-                loadDataFromLocal() {
-                    try {
-                        const saved = localStorage.getItem('quranTrackerData');
-                        if (saved) {
-                            const data = JSON.parse(saved);
-                            this.todayChecks = data.todayChecks || {};
-                            this.monthlyData = data.monthlyData || {};
-                        }
-                    } catch (error) {
-                        console.error('Error loading from localStorage:', error);
-                    }
-                },
-
-                async saveData() {
-                    // Always save to localStorage as backup
-                    try {
-                        const data = {
-                            todayChecks: this.todayChecks,
-                            monthlyData: this.monthlyData
-                        };
-                        localStorage.setItem('quranTrackerData', JSON.stringify(data));
-                    } catch (error) {
-                        console.error('Error saving to localStorage:', error);
-                    }
-                    
-                    // Save to Firebase if connected
-                    if (this.firebaseConnected) {
-                        try {
-                            // Save today's checks
-                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                            await window.firebase.set(todayChecksRef, this.todayChecks);
-                            
-                            // Save monthly data
-                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                            await window.firebase.set(monthlyDataRef, this.monthlyData);
-                            
-                        } catch (error) {
-                            console.error('Error saving to Firebase:', error);
-                        }
-                    }
-                },
-
-                checkAnnouncementStatus() {
-                    // Check if user has seen announcement today
-                    const today = this.getTodayKey();
-                    const lastSeen = localStorage.getItem('announcementLastSeen');
-                    
-                    if (lastSeen !== today) {
-                        this.showAnnouncement = true;
-                    }
-                },
-
-                closeAnnouncement() {
-                    this.showAnnouncement = false;
-                    const today = this.getTodayKey();
-                    localStorage.setItem('announcementLastSeen', today);
-                },
-
-                editParticipant(participant) {
-                    this.editingParticipant = { ...participant };
-                    this.showEditParticipant = true;
-                },
-
-                async saveParticipantName() {
-                    if (!this.editingParticipant.name.trim()) {
-                        alert('Nama peserta tidak boleh kosong!');
-                        return;
-                    }
-                    
-                    // Update in local array
-                    const index = this.participants.findIndex(p => p.id === this.editingParticipant.id);
-                    if (index !== -1) {
-                        this.participants[index].name = this.editingParticipant.name.trim();
-                        
-                        // Save to Firebase
-                        await this.saveParticipants();
-                        
-                        this.showEditParticipant = false;
-                        this.editingParticipant = { id: null, name: '' };
-                    }
-                },
-
-                getCurrentDate() {
-                    return new Date().toLocaleDateString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
-                },
-
-                getCurrentMonth() {
-                    return new Date().toISOString().slice(0, 7);
-                },
-
-                getDaysInMonth(monthString = null) {
-                    const targetMonth = monthString || this.selectedMonth;
-                    if (!targetMonth) return 31;
-                    const [year, month] = targetMonth.split('-');
-                    return new Date(year, month, 0).getDate();
-                },
-
-                getDaysSinceStart() {
-                    const today = new Date();
-                    const diffTime = today - this.programStartDate;
-                    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                },
-
-                getRotatedParticipants() {
-                    const daysSinceStart = this.getDaysSinceStart();
-                    const rotated = [...this.participants];
-                    
-                    for (let i = 0; i < daysSinceStart % 30; i++) {
-                        rotated.unshift(rotated.pop());
-                    }
-                    
-                    return rotated;
-                },
-
-                getJuzDetails(juzNumber) {
-                    return this.juzDetails[juzNumber] || { 
-                        name: 'Unknown', 
-                        content: 'Unknown', 
-                        pages: 'Unknown',
-                        description: 'Deskripsi tidak tersedia'
-                    };
-                },
-
-                isCompleted(participantId) {
-                    const today = this.getTodayKey();
-                    return this.todayChecks[today]?.includes(participantId) || false;
-                },
-
-                async toggleCheck(participantId) {
-                    const today = this.getTodayKey();
-                    
-                    if (!this.todayChecks[today]) {
-                        this.todayChecks[today] = [];
-                    }
-                    
-                    const index = this.todayChecks[today].indexOf(participantId);
-                    if (index > -1) {
-                        this.todayChecks[today].splice(index, 1);
-                    } else {
-                        this.todayChecks[today].push(participantId);
-                    }
-                    
-                    this.updateMonthlyRecord();
-                    await this.saveData();
-                },
-
-                getTodayKey() {
-                    return new Date().toISOString().slice(0, 10);
-                },
-
-                getTodayCompleted() {
-                    const today = this.getTodayKey();
-                    return this.todayChecks[today]?.length || 0;
-                },
-
-                updateMonthlyRecord() {
-                    const month = this.getCurrentMonth();
-                    const today = this.getTodayKey();
-                    
-                    if (!this.monthlyData[month]) {
-                        this.monthlyData[month] = {
-                            participantChecks: {},
-                            khatamDays: []
-                        };
-                    }
-                    
-                    this.participants.forEach(participant => {
-                        if (!this.monthlyData[month].participantChecks[participant.id]) {
-                            this.monthlyData[month].participantChecks[participant.id] = [];
-                        }
-                        
-                        const checks = this.monthlyData[month].participantChecks[participant.id];
-                        const isCompleted = this.isCompleted(participant.id);
-                        const alreadyRecorded = checks.includes(today);
-                        
-                        if (isCompleted && !alreadyRecorded) {
-                            checks.push(today);
-                        } else if (!isCompleted && alreadyRecorded) {
-                            const index = checks.indexOf(today);
-                            checks.splice(index, 1);
-                        }
-                    });
-                    
-                    const completedToday = this.getTodayCompleted();
-                    const khatamDays = this.monthlyData[month].khatamDays;
-                    const isKhatamDay = khatamDays.includes(today);
-                    
-                    if (completedToday === 30 && !isKhatamDay) {
-                        khatamDays.push(today);
-                    } else if (completedToday < 30 && isKhatamDay) {
-                        const index = khatamDays.indexOf(today);
-                        khatamDays.splice(index, 1);
-                    }
-                },
-
-                generateAvailableMonths() {
-                    const months = [];
-                    const currentDate = new Date();
-                    const startDate = new Date('2025-07-01');
-                    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 6, 1);
-                    
-                    let tempDate = new Date(startDate);
-                    while (tempDate <= endDate) {
-                        const monthKey = tempDate.toISOString().slice(0, 7);
-                        const monthLabel = tempDate.toLocaleDateString('id-ID', { 
-                            year: 'numeric', 
-                            month: 'long' 
-                        });
-                        
-                        months.push({ value: monthKey, label: monthLabel });
-                        tempDate.setMonth(tempDate.getMonth() + 1);
-                    }
-                    
-                    this.availableMonths = months;
-                },
-
-                updateMonthlyData() {
-                    const currentMonth = this.getCurrentMonth();
-                    if (!this.monthlyData[currentMonth]) {
-                        this.monthlyData[currentMonth] = {
-                            participantChecks: {},
-                            khatamDays: []
-                        };
-                    }
-                },
-
-                getParticipantMonthlyCount(participantId) {
-                    const monthData = this.monthlyData[this.selectedMonth];
-                    if (!monthData || !monthData.participantChecks[participantId]) {
-                        return 0;
-                    }
-                    return monthData.participantChecks[participantId].length;
-                },
-
-                getMonthlyKhatam() {
-                    const monthData = this.monthlyData[this.selectedMonth];
-                    return monthData ? monthData.khatamDays.length : 0;
-                },
-
-                getTotalMonthlyChecks() {
-                    const monthData = this.monthlyData[this.selectedMonth];
-                    if (!monthData) return 0;
-                    
-                    let total = 0;
-                    Object.values(monthData.participantChecks).forEach(checks => {
-                        total += checks.length;
-                    });
-                    return total;
-                },
-
-                // Countdown functions
-                startCountdown() {
-                    this.updateCountdown();
-                    this.countdownInterval = setInterval(() => {
-                        this.updateCountdown();
+                    setTimeout(() => {
+                        this.isLoading = false;
+                        this.loadingMessage = '';
                     }, 1000);
                 },
 
-                updateCountdown() {
-                    const now = new Date();
-                    const nextMidnight = new Date(now);
-                    
-                    nextMidnight.setDate(nextMidnight.getDate() + 1);
-                    nextMidnight.setHours(0, 0, 0, 0);
-                    
-                    const diff = nextMidnight - now;
-                    
-                    this.countdown.hours = Math.floor(diff / (1000 * 60 * 60));
-                    this.countdown.minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    this.countdown.seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                    
-                    if (this.countdown.hours < 1) {
-                        this.countdownText = `Reset dalam ${this.countdown.minutes} menit ${this.countdown.seconds} detik`;
-                    } else {
-                        this.countdownText = `Reset dalam ${this.countdown.hours} jam ${this.countdown.minutes} menit`;
-                    }
-                },
-
-                formatCountdown() {
-                    return `${String(this.countdown.hours).padStart(2, '0')}:${String(this.countdown.minutes).padStart(2, '0')}:${String(this.countdown.seconds).padStart(2, '0')}`;
-                },
-
-                // Admin functions
-                adminLogin() {
-                    if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
-                        this.isAdmin = true;
-                        this.showAdminLogin = false;
-                        this.adminError = '';
-                        this.adminCredentials = { username: '', password: '' };
-                    } else {
-                        this.adminError = 'Username atau password salah!';
-                    }
-                },
-
-                logout() {
-                    this.isAdmin = false;
-                    this.activeTab = 'checklist';
-                },
-
-                generateWhatsAppExport() {
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
-                    const timeStr = now.toLocaleTimeString('id-ID', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    
-                    const rotatedParticipants = this.getRotatedParticipants();
-                    const completedParticipants = [];
-                    const pendingParticipants = [];
-                    
-                    rotatedParticipants.forEach((participant, index) => {
-                        const juzNumber = index + 1;
-                        const juzDetail = this.getJuzDetails(juzNumber);
-                        const isCompleted = this.isCompleted(participant.id);
-                        
-                        const participantInfo = {
-                            name: participant.name,
-                            juz: juzNumber,
-                            juzName: juzDetail.name,
-                            content: juzDetail.content,
-                            status: isCompleted ? '✅' : '⏳'
+                async checkFirebaseConnection() {
+                    return new Promise((resolve, reject) => {
+                        // Wait for Firebase to be available
+                        const checkFirebase = () => {
+                            if (window.firebase) {
+                                if (window.firebase.initialized) {
+                                    this.testFirebaseConnection()
+                                        .then(() => {
+                                            this.firebaseConnected = true;
+                                            this.connectionStatus = 'online';
+                                            console.log('Firebase connected successfully');
+                                            resolve();
+                                        })
+                                        .catch(error => {
+                                            this.firebaseError = error.message;
+                                            reject(error);
+                                        });
+                                } else {
+                                    this.firebaseError = window.firebase.error || 'Firebase initialization failed';
+                                    reject(new Error('Firebase initialization failed: ' + this.firebaseError));
+                                }
+                            } else {
+                                setTimeout(checkFirebase, 100);
+                            }
                         };
                         
-                        if (isCompleted) {
-                            completedParticipants.push(participantInfo);
-                        } else {
-                            pendingParticipants.push(participantInfo);
-                        }
-                    });
-                    
-                    let exportText = `📖 *ONE DAY ONE JUZ TRACKER*\n`;
-                    exportText += `📅 ${dateStr}\n`;
-                    exportText += `🕐 Update: ${timeStr} WIB\n`;
-                    exportText += `🔄 Sinkronisasi: ${this.firebaseConnected ? 'Realtime' : 'Local'}\n`;
-                    exportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-                    
-                    exportText += `📊 *RINGKASAN PROGRESS*\n`;
-                    exportText += `✅ Sudah Selesai: ${completedParticipants.length}/30\n`;
-                    exportText += `⏳ Belum Selesai: ${pendingParticipants.length}/30\n`;
-                    
-                    if (completedParticipants.length === 30) {
-                        exportText += `🎉 *ALHAMDULILLAH KHATAM HARI INI!* 🎉\n`;
-                    }
-                    
-                    exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-                    
-                    if (completedParticipants.length > 0) {
-                        exportText += `✅ *SUDAH SELESAI (${completedParticipants.length})*\n`;
-                        completedParticipants.forEach(p => {
-                            exportText += `${p.status} ${p.name} - Juz ${p.juz} (${p.juzName})\n`;
-                        });
-                        exportText += `\n`;
-                    }
-                    
-                    if (pendingParticipants.length > 0) {
-                        exportText += `⏳ *BELUM SELESAI (${pendingParticipants.length})*\n`;
-                        pendingParticipants.forEach(p => {
-                            exportText += `${p.status} ${p.name} - Juz ${p.juz} (${p.juzName})\n`;
-                            exportText += `    ${p.content}\n`;
-                        });
-                    }
-                    
-                    exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-                    exportText += `💝 Semoga Allah mudahkan kita semua dalam membaca Al-Qur'an\n`;
-                    exportText += `🤲 Barakallahu fiikum\n\n`;
-                    exportText += `#OneDayOneJuz #AlQuranTracker #Khatam`;
-                    
-                    this.exportText = exportText;
-                },
-
-                copyToClipboard() {
-                    if (navigator.clipboard) {
-                        navigator.clipboard.writeText(this.exportText).then(() => {
-                            alert('✅ Data berhasil di-copy! Sekarang paste ke WhatsApp grup.');
-                        }).catch(() => {
-                            this.fallbackCopy();
-                        });
-                    } else {
-                        this.fallbackCopy();
-                    }
-                },
-
-                fallbackCopy() {
-                    const textArea = document.createElement('textarea');
-                    textArea.value = this.exportText;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                        alert('✅ Data berhasil di-copy! Sekarang paste ke WhatsApp grup.');
-                    } catch (err) {
-                        alert('❌ Gagal copy. Silakan copy manual dari text box.');
-                    }
-                    document.body.removeChild(textArea);
-                },
-
-                async resetSystem() {
-                    if (!confirm('⚠️ PERINGATAN! Ini akan menghapus semua data progress.\n\nApakah Anda yakin?')) {
-                        return;
-                    }
-
-                    if (!confirm('🚨 KONFIRMASI TERAKHIR! Semua data akan hilang!\n\nLanjutkan reset?')) {
-                        return;
-                    }
-
-                    this.isLoading = true;
-
-                    try {
-                        // Reset all data
-                        this.todayChecks = {};
-                        this.monthlyData = {};
-                        this.exportText = '';
-
-                        // Clear localStorage
-                        localStorage.removeItem('quranTrackerData');
-                        localStorage.removeItem('announcementLastSeen');
-
-                        // Reset Firebase if connected
-                        if (this.firebaseConnected) {
-                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
-                            await window.firebase.set(todayChecksRef, {});
-                            
-                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
-                            await window.firebase.set(monthlyDataRef, {});
-                        }
-
-                        alert('✅ Sistem berhasil direset! Halaman akan dimuat ulang.');
-                        location.reload();
+                        checkFirebase();
                         
-                    } catch (error) {
-                        console.error('Error resetting system:', error);
-                        alert('❌ Terjadi kesalahan saat reset sistem.');
-                    }
-                    
-                    this.isLoading = false;
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                        // Timeout after 5 seconds
+                        setTimeout(() => {
+                            if (!this.firebaseConnected) {
+                                reject(new Error('Firebase connection timeout'));
+                            }
+                        }, 5000);
+                    });
+                },
+
+                async testFirebaseConnection() {
+                    try {
