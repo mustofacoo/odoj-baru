@@ -10,17 +10,19 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, onValue, push, update, remove, connectDatabaseEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, set, get, onValue, push, update, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
         // Firebase configuration - GANTI DENGAN CONFIG FIREBASE ANDA YANG BENAR
-      const firebaseConfig = {
-  apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
-  authDomain: "odoj-halaqah1.firebaseapp.com",
-  projectId: "odoj-halaqah1",
-  storageBucket: "odoj-halaqah1.firebasestorage.app",
-  messagingSenderId: "268720571471",
-  appId: "1:268720571471:web:7c534d4996873fbbaed63a"
-};
+        const firebaseConfig = {
+            // CONTOH CONFIG - HARUS DIGANTI:
+            apiKey: "AIzaSyD1j1mvfhZWb7l1eTEfNLeDbL1_L40Z_2Q",
+            authDomain: "odoj-halaqah1.firebaseapp.com",
+            databaseURL: "https://odoj-halaqah1-default-rtdb.firebaseio.com/", // PENTING: URL Database harus benar
+            projectId: "odoj-halaqah1",
+            storageBucket: "odoj-halaqah1.firebasestorage.app",
+            messagingSenderId: "268720571471",
+            appId: "1:268720571471:web:7c534d4996873fbbaed63a"
+        };
         
         try {
             // Initialize Firebase
@@ -943,3 +945,563 @@
 
                 async testFirebaseConnection() {
                     try {
+                        // Test both read and write operations
+                        const testRef = window.firebase.ref(window.firebase.database, 'connection-test');
+                        
+                        // Test write
+                        await window.firebase.set(testRef, {
+                            timestamp: Date.now(),
+                            status: 'connected'
+                        });
+                        
+                        // Test read
+                        const snapshot = await window.firebase.get(testRef);
+                        if (!snapshot.exists()) {
+                            throw new Error('Failed to read test data from Firebase');
+                        }
+                        
+                        // Clean up test data
+                        await window.firebase.set(testRef, null);
+                        
+                        return true;
+                    } catch (error) {
+                        console.error('Firebase connection test failed:', error);
+                        throw new Error(`Firebase connection failed: ${error.message}`);
+                    }
+                },
+
+                continueOffline() {
+                    this.showFirebaseConfig = false;
+                    this.firebaseConnected = false;
+                    this.connectionStatus = 'offline';
+                    this.participants = [...this.defaultParticipants];
+                    this.loadDataFromLocal();
+                },
+
+                async loadParticipants() {
+                    if (!this.firebaseConnected) {
+                        this.participants = [...this.defaultParticipants];
+                        return;
+                    }
+                    
+                    try {
+                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
+                        const snapshot = await window.firebase.get(participantsRef);
+                        
+                        if (snapshot.exists()) {
+                            this.participants = Object.values(snapshot.val());
+                        } else {
+                            // Initialize with default participants
+                            this.participants = [...this.defaultParticipants];
+                            await this.saveParticipants();
+                        }
+                    } catch (error) {
+                        console.error('Error loading participants:', error);
+                        this.participants = [...this.defaultParticipants];
+                    }
+                },
+
+                async saveParticipants() {
+                    if (!this.firebaseConnected) return;
+                    
+                    try {
+                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
+                        const participantsObj = {};
+                        this.participants.forEach(p => {
+                            participantsObj[p.id] = p;
+                        });
+                        await window.firebase.set(participantsRef, participantsObj);
+                    } catch (error) {
+                        console.error('Error saving participants:', error);
+                    }
+                },
+
+                setupRealtimeListeners() {
+                    if (!this.firebaseConnected) return;
+                    
+                    try {
+                        // Listen to participants changes
+                        const participantsRef = window.firebase.ref(window.firebase.database, 'participants');
+                        window.firebase.onValue(participantsRef, (snapshot) => {
+                            if (snapshot.exists()) {
+                                this.participants = Object.values(snapshot.val());
+                            }
+                        }, (error) => {
+                            console.error('Error in participants listener:', error);
+                        });
+                        
+                        // Listen to today checks
+                        const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                        window.firebase.onValue(todayChecksRef, (snapshot) => {
+                            if (snapshot.exists()) {
+                                this.todayChecks = snapshot.val();
+                            }
+                        }, (error) => {
+                            console.error('Error in todayChecks listener:', error);
+                        });
+                        
+                        // Listen to monthly data
+                        const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                        window.firebase.onValue(monthlyDataRef, (snapshot) => {
+                            if (snapshot.exists()) {
+                                this.monthlyData = snapshot.val();
+                            }
+                        }, (error) => {
+                            console.error('Error in monthlyData listener:', error);
+                        });
+                        
+                        console.log('Realtime listeners setup successfully');
+                    } catch (error) {
+                        console.error('Error setting up realtime listeners:', error);
+                    }
+                },
+
+                async loadData() {
+                    if (!this.firebaseConnected) {
+                        this.loadDataFromLocal();
+                        return;
+                    }
+                    
+                    try {
+                        // Load today's checks
+                        const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                        const todaySnapshot = await window.firebase.get(todayChecksRef);
+                        if (todaySnapshot.exists()) {
+                            this.todayChecks = todaySnapshot.val();
+                        }
+                        
+                        // Load monthly data
+                        const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                        const monthlySnapshot = await window.firebase.get(monthlyDataRef);
+                        if (monthlySnapshot.exists()) {
+                            this.monthlyData = monthlySnapshot.val();
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error loading data from Firebase:', error);
+                        this.loadDataFromLocal();
+                    }
+                },
+
+                loadDataFromLocal() {
+                    try {
+                        const saved = localStorage.getItem('quranTrackerData');
+                        if (saved) {
+                            const data = JSON.parse(saved);
+                            this.todayChecks = data.todayChecks || {};
+                            this.monthlyData = data.monthlyData || {};
+                        }
+                    } catch (error) {
+                        console.error('Error loading from localStorage:', error);
+                    }
+                },
+
+                async saveData() {
+                    // Always save to localStorage as backup
+                    try {
+                        const data = {
+                            todayChecks: this.todayChecks,
+                            monthlyData: this.monthlyData
+                        };
+                        localStorage.setItem('quranTrackerData', JSON.stringify(data));
+                    } catch (error) {
+                        console.error('Error saving to localStorage:', error);
+                    }
+                    
+                    // Save to Firebase if connected
+                    if (this.firebaseConnected) {
+                        try {
+                            // Save today's checks
+                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                            await window.firebase.set(todayChecksRef, this.todayChecks);
+                            
+                            // Save monthly data
+                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                            await window.firebase.set(monthlyDataRef, this.monthlyData);
+                            
+                        } catch (error) {
+                            console.error('Error saving to Firebase:', error);
+                            this.connectionStatus = 'offline';
+                        }
+                    }
+                },
+
+                checkAnnouncementStatus() {
+                    // Check if user has seen announcement today
+                    const today = this.getTodayKey();
+                    const lastSeen = localStorage.getItem('announcementLastSeen');
+                    
+                    if (lastSeen !== today) {
+                        this.showAnnouncement = true;
+                    }
+                },
+
+                closeAnnouncement() {
+                    this.showAnnouncement = false;
+                    const today = this.getTodayKey();
+                    localStorage.setItem('announcementLastSeen', today);
+                },
+
+                editParticipant(participant) {
+                    this.editingParticipant = { ...participant };
+                    this.showEditParticipant = true;
+                },
+
+                async saveParticipantName() {
+                    if (!this.editingParticipant.name.trim()) {
+                        alert('Nama peserta tidak boleh kosong!');
+                        return;
+                    }
+                    
+                    // Update in local array
+                    const index = this.participants.findIndex(p => p.id === this.editingParticipant.id);
+                    if (index !== -1) {
+                        this.participants[index].name = this.editingParticipant.name.trim();
+                        
+                        // Save to Firebase
+                        await this.saveParticipants();
+                        
+                        this.showEditParticipant = false;
+                        this.editingParticipant = { id: null, name: '' };
+                    }
+                },
+
+                getCurrentDate() {
+                    return new Date().toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                },
+
+                getCurrentMonth() {
+                    return new Date().toISOString().slice(0, 7);
+                },
+
+                getDaysInMonth(monthString = null) {
+                    const targetMonth = monthString || this.selectedMonth;
+                    if (!targetMonth) return 31;
+                    const [year, month] = targetMonth.split('-');
+                    return new Date(year, month, 0).getDate();
+                },
+
+                getDaysSinceStart() {
+                    const today = new Date();
+                    const diffTime = today - this.programStartDate;
+                    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                },
+
+                getRotatedParticipants() {
+                    const daysSinceStart = this.getDaysSinceStart();
+                    const rotated = [...this.participants];
+                    
+                    for (let i = 0; i < daysSinceStart % 30; i++) {
+                        rotated.unshift(rotated.pop());
+                    }
+                    
+                    return rotated;
+                },
+
+                getJuzDetails(juzNumber) {
+                    return this.juzDetails[juzNumber] || { 
+                        name: 'Unknown', 
+                        content: 'Unknown', 
+                        pages: 'Unknown',
+                        description: 'Deskripsi tidak tersedia'
+                    };
+                },
+
+                isCompleted(participantId) {
+                    const today = this.getTodayKey();
+                    return this.todayChecks[today]?.includes(participantId) || false;
+                },
+
+                async toggleCheck(participantId) {
+                    const today = this.getTodayKey();
+                    
+                    if (!this.todayChecks[today]) {
+                        this.todayChecks[today] = [];
+                    }
+                    
+                    const index = this.todayChecks[today].indexOf(participantId);
+                    if (index > -1) {
+                        this.todayChecks[today].splice(index, 1);
+                    } else {
+                        this.todayChecks[today].push(participantId);
+                    }
+                    
+                    this.updateMonthlyRecord();
+                    await this.saveData();
+                },
+
+                getTodayKey() {
+                    return new Date().toISOString().slice(0, 10);
+                },
+
+                getTodayCompleted() {
+                    const today = this.getTodayKey();
+                    return this.todayChecks[today]?.length || 0;
+                },
+
+                updateMonthlyRecord() {
+                    const month = this.getCurrentMonth();
+                    const today = this.getTodayKey();
+                    
+                    if (!this.monthlyData[month]) {
+                        this.monthlyData[month] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                    }
+                    
+                    this.participants.forEach(participant => {
+                        if (!this.monthlyData[month].participantChecks[participant.id]) {
+                            this.monthlyData[month].participantChecks[participant.id] = [];
+                        }
+                        
+                        const checks = this.monthlyData[month].participantChecks[participant.id];
+                        const isCompleted = this.isCompleted(participant.id);
+                        const alreadyRecorded = checks.includes(today);
+                        
+                        if (isCompleted && !alreadyRecorded) {
+                            checks.push(today);
+                        } else if (!isCompleted && alreadyRecorded) {
+                            const index = checks.indexOf(today);
+                            checks.splice(index, 1);
+                        }
+                    });
+                    
+                    const completedToday = this.getTodayCompleted();
+                    const khatamDays = this.monthlyData[month].khatamDays;
+                    const isKhatamDay = khatamDays.includes(today);
+                    
+                    if (completedToday === 30 && !isKhatamDay) {
+                        khatamDays.push(today);
+                    } else if (completedToday < 30 && isKhatamDay) {
+                        const index = khatamDays.indexOf(today);
+                        khatamDays.splice(index, 1);
+                    }
+                },
+
+                generateAvailableMonths() {
+                    const months = [];
+                    const currentDate = new Date();
+                    const startDate = new Date('2025-07-01');
+                    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 6, 1);
+                    
+                    let tempDate = new Date(startDate);
+                    while (tempDate <= endDate) {
+                        const monthKey = tempDate.toISOString().slice(0, 7);
+                        const monthLabel = tempDate.toLocaleDateString('id-ID', { 
+                            year: 'numeric', 
+                            month: 'long' 
+                        });
+                        
+                        months.push({ value: monthKey, label: monthLabel });
+                        tempDate.setMonth(tempDate.getMonth() + 1);
+                    }
+                    
+                    this.availableMonths = months;
+                },
+
+                updateMonthlyData() {
+                    const currentMonth = this.getCurrentMonth();
+                    if (!this.monthlyData[currentMonth]) {
+                        this.monthlyData[currentMonth] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                    }
+                },
+
+                getParticipantMonthlyCount(participantId) {
+                    const monthData = this.monthlyData[this.selectedMonth];
+                    if (!monthData || !monthData.participantChecks[participantId]) {
+                        return 0;
+                    }
+                    return monthData.participantChecks[participantId].length;
+                },
+
+                getMonthlyKhatam() {
+                    const monthData = this.monthlyData[this.selectedMonth];
+                    return monthData ? monthData.khatamDays.length : 0;
+                },
+
+                getTotalMonthlyChecks() {
+                    const monthData = this.monthlyData[this.selectedMonth];
+                    if (!monthData) return 0;
+                    
+                    let total = 0;
+                    Object.values(monthData.participantChecks).forEach(checks => {
+                        total += checks.length;
+                    });
+                    return total;
+                },
+
+                // Admin functions
+                adminLogin() {
+                    if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
+                        this.isAdmin = true;
+                        this.showAdminLogin = false;
+                        this.adminError = '';
+                        this.adminCredentials = { username: '', password: '' };
+                    } else {
+                        this.adminError = 'Username atau password salah!';
+                    }
+                },
+
+                logout() {
+                    this.isAdmin = false;
+                    this.activeTab = 'checklist';
+                },
+
+                generateWhatsAppExport() {
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    const timeStr = now.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    const rotatedParticipants = this.getRotatedParticipants();
+                    const completedParticipants = [];
+                    const pendingParticipants = [];
+                    
+                    rotatedParticipants.forEach((participant, index) => {
+                        const juzNumber = index + 1;
+                        const juzDetail = this.getJuzDetails(juzNumber);
+                        const isCompleted = this.isCompleted(participant.id);
+                        
+                        const participantInfo = {
+                            name: participant.name,
+                            juz: juzNumber,
+                            juzName: juzDetail.name,
+                            content: juzDetail.content,
+                            status: isCompleted ? '✅' : '⏳'
+                        };
+                        
+                        if (isCompleted) {
+                            completedParticipants.push(participantInfo);
+                        } else {
+                            pendingParticipants.push(participantInfo);
+                        }
+                    });
+                    
+                    let exportText = `📖 *ONE DAY ONE JUZ TRACKER*\n`;
+                    exportText += `📅 ${dateStr}\n`;
+                    exportText += `🕐 Update: ${timeStr} WIB\n`;
+                    exportText += `🔄 Sinkronisasi: ${this.firebaseConnected ? 'Realtime' : 'Local'}\n`;
+                    exportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                    
+                    exportText += `📊 *RINGKASAN PROGRESS*\n`;
+                    exportText += `✅ Sudah Selesai: ${completedParticipants.length}/30\n`;
+                    exportText += `⏳ Belum Selesai: ${pendingParticipants.length}/30\n`;
+                    
+                    if (completedParticipants.length === 30) {
+                        exportText += `🎉 *ALHAMDULILLAH KHATAM HARI INI!* 🎉\n`;
+                    }
+                    
+                    exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                    
+                    if (completedParticipants.length > 0) {
+                        exportText += `✅ *SUDAH SELESAI (${completedParticipants.length})*\n`;
+                        completedParticipants.forEach(p => {
+                            exportText += `${p.status} ${p.name} - Juz ${p.juz} (${p.juzName})\n`;
+                        });
+                        exportText += `\n`;
+                    }
+                    
+                    if (pendingParticipants.length > 0) {
+                        exportText += `⏳ *BELUM SELESAI (${pendingParticipants.length})*\n`;
+                        pendingParticipants.forEach(p => {
+                            exportText += `${p.status} ${p.name} - Juz ${p.juz} (${p.juzName})\n`;
+                            exportText += `    ${p.content}\n`;
+                        });
+                    }
+                    
+                    exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                    exportText += `💝 Semoga Allah mudahkan kita semua dalam membaca Al-Qur'an\n`;
+                    exportText += `🤲 Barakallahu fiikum\n\n`;
+                    exportText += `#OneDayOneJuz #AlQuranTracker #Khatam`;
+                    
+                    this.exportText = exportText;
+                },
+
+                copyToClipboard() {
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(this.exportText).then(() => {
+                            alert('✅ Data berhasil di-copy! Sekarang paste ke WhatsApp grup.');
+                        }).catch(() => {
+                            this.fallbackCopy();
+                        });
+                    } else {
+                        this.fallbackCopy();
+                    }
+                },
+
+                fallbackCopy() {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = this.exportText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        alert('✅ Data berhasil di-copy! Sekarang paste ke WhatsApp grup.');
+                    } catch (err) {
+                        alert('❌ Gagal copy. Silakan copy manual dari text box.');
+                    }
+                    document.body.removeChild(textArea);
+                },
+
+                async resetSystem() {
+                    if (!confirm('⚠️ PERINGATAN! Ini akan menghapus semua data progress.\n\nApakah Anda yakin?')) {
+                        return;
+                    }
+
+                    if (!confirm('🚨 KONFIRMASI TERAKHIR! Semua data akan hilang!\n\nLanjutkan reset?')) {
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.loadingMessage = 'Mereset sistem...';
+
+                    try {
+                        // Reset all data
+                        this.todayChecks = {};
+                        this.monthlyData = {};
+                        this.exportText = '';
+
+                        // Clear localStorage
+                        localStorage.removeItem('quranTrackerData');
+                        localStorage.removeItem('announcementLastSeen');
+
+                        // Reset Firebase if connected
+                        if (this.firebaseConnected) {
+                            const todayChecksRef = window.firebase.ref(window.firebase.database, 'todayChecks');
+                            await window.firebase.set(todayChecksRef, {});
+                            
+                            const monthlyDataRef = window.firebase.ref(window.firebase.database, 'monthlyData');
+                            await window.firebase.set(monthlyDataRef, {});
+                        }
+
+                        alert('✅ Sistem berhasil direset! Halaman akan dimuat ulang.');
+                        location.reload();
+                        
+                    } catch (error) {
+                        console.error('Error resetting system:', error);
+                        alert('❌ Terjadi kesalahan saat reset sistem.');
+                    }
+                    
+                    this.isLoading = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
