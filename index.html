@@ -7,22 +7,63 @@
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Supabase SDK -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Supabase SDK - Updated to latest version -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
     
     <script>
-        // Supabase Configuration - GANTI DENGAN CREDENTIALS ANDA
+        // Supabase Configuration
         const SUPABASE_URL = 'https://avbfccjifnptszchabjh.supabase.co'
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2YmZjY2ppZm5wdHN6Y2hhYmpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2OTQyODMsImV4cCI6MjA2NzI3MDI4M30.Al8QBt2khiS35uG5IkGIJrLtAd1niWUFAbcsx_pBEgU'
-        // Initialize Supabase
+        
+        // Initialize Supabase with better error handling
         let supabase = null;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-            window.supabaseClient = supabase
-            console.log('🟢 Supabase initialized successfully')
-        } catch (error) {
-            console.log('🟠 Supabase initialization failed, using offline mode')
+        
+        function initializeSupabase() {
+            try {
+                // Check if supabase library is loaded
+                if (typeof window.supabase === 'undefined') {
+                    console.log('🔴 Supabase library not loaded');
+                    return false;
+                }
+                
+                // Create supabase client
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                    auth: {
+                        persistSession: false
+                    },
+                    db: {
+                        schema: 'public'
+                    },
+                    global: {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                });
+                
+                window.supabaseClient = supabase;
+                console.log('🟢 Supabase client created successfully');
+                console.log('🔗 URL:', SUPABASE_URL);
+                console.log('🔑 Key length:', SUPABASE_ANON_KEY.length);
+                return true;
+                
+            } catch (error) {
+                console.log('🔴 Supabase initialization failed:', error);
+                return false;
+            }
         }
+        
+        // Initialize after DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const success = initializeSupabase();
+                if (success) {
+                    console.log('✅ Supabase ready for use');
+                } else {
+                    console.log('❌ Falling back to offline mode');
+                }
+            }, 100);
+        });
     </script>
     
     <style>
@@ -584,6 +625,23 @@
                 <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">🔧 Panel Admin</h3>
                 
                 <div class="space-y-6">
+                    <!-- Supabase Connection Test -->
+                    <div class="border border-blue-200 rounded-lg p-4 md:p-6 bg-blue-50">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-3">🔧 Test Koneksi Supabase</h4>
+                        <p class="text-sm text-blue-700 mb-4">
+                            Klik tombol ini untuk menguji koneksi ke database Supabase.
+                        </p>
+                        
+                        <button @click="testSupabaseConnection()" 
+                                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-300 text-sm font-semibold">
+                            🧪 Test Koneksi
+                        </button>
+                        
+                        <div x-show="connectionTestResult" class="mt-4 p-3 rounded" :class="connectionTestSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                            <p x-text="connectionTestResult"></p>
+                        </div>
+                    </div>
+
                     <!-- Export WhatsApp Data -->
                     <div class="border border-gray-200 rounded-lg p-4 md:p-6">
                         <h4 class="text-lg font-semibold text-gray-800 mb-3">📤 Ekspor Data WhatsApp</h4>
@@ -625,13 +683,15 @@
                     </div>
 
                     <!-- Data Info -->
-                    <div class="border border-blue-200 rounded-lg p-4 md:p-6 bg-blue-50">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-3">💾 Informasi Data</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 md:p-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">💾 Informasi Data</h4>
                         <div class="space-y-2 text-sm">
                             <p><strong>Status Koneksi:</strong> 
                                 <span :class="supabaseConnected ? 'text-green-600' : 'text-orange-600'" 
                                       x-text="supabaseConnected ? '🟢 Supabase Connected' : '🟠 Offline Mode'"></span>
                             </p>
+                            <p><strong>Supabase URL:</strong> <span class="font-mono text-xs" x-text="SUPABASE_URL"></span></p>
+                            <p><strong>API Key (first 20 chars):</strong> <span class="font-mono text-xs" x-text="SUPABASE_ANON_KEY.substring(0, 20) + '...'"></span></p>
                             <p><strong>Penyimpanan:</strong> 
                                 <span x-text="supabaseConnected ? 'Supabase + Local Backup' : 'Local Storage Browser'"></span>
                             </p>
@@ -647,7 +707,7 @@
                             </div>
                             <div x-show="!supabaseConnected" class="mt-2 p-2 bg-orange-50 rounded">
                                 <p class="text-orange-700 text-xs">
-                                    <strong>📱 Single Device:</strong> Data tersimpan lokal di browser ini saja. Setup Supabase untuk multi-device sync.
+                                    <strong>📱 Single Device:</strong> Data tersimpan lokal di browser ini saja. Cek koneksi Supabase untuk multi-device sync.
                                 </p>
                             </div>
                         </div>
@@ -726,6 +786,8 @@
                 // Connection state
                 connectionStatus: 'connecting',
                 supabaseConnected: false,
+                connectionTestResult: '',
+                connectionTestSuccess: false,
                 
                 // UI state
                 isLoading: true,
@@ -733,6 +795,10 @@
                 showAnnouncement: false,
                 showEditParticipant: false,
                 editingParticipant: { id: null, name: '' },
+                
+                // Supabase credentials (for debugging)
+                SUPABASE_URL: 'https://avbfccjifnptszchabjh.supabase.co',
+                SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2YmZjY2ppZm5wdHN6Y2hhYmpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2OTQyODMsImV4cCI6MjA2NzI3MDI4M30.Al8QBt2khiS35uG5IkGIJrLtAd1niWUFAbcsx_pBEgU',
                 
                 // Data peserta
                 participants: [
@@ -802,25 +868,28 @@
                     this.loadingMessage = 'Memulai aplikasi...';
                     
                     try {
-                        // Test Supabase connection with timeout
-                        this.loadingMessage = 'Mencoba koneksi Supabase...';
-                        await this.testSupabaseConnection();
+                        // Test Supabase connection with better timeout
+                        this.loadingMessage = 'Menguji koneksi Supabase...';
+                        await this.testSupabaseConnectionInit();
                         
-                        // Load data from Supabase
-                        this.loadingMessage = 'Memuat data dari Supabase...';
-                        await this.loadDataFromSupabase();
-                        
-                        this.connectionStatus = 'online';
-                        this.supabaseConnected = true;
-                        console.log('✅ Supabase mode activated');
+                        if (this.supabaseConnected) {
+                            // Load data from Supabase
+                            this.loadingMessage = 'Memuat data dari Supabase...';
+                            await this.loadDataFromSupabase();
+                            this.connectionStatus = 'online';
+                            console.log('✅ Supabase mode activated');
+                        } else {
+                            // Fallback to localStorage
+                            this.loadingMessage = 'Mode offline - memuat data lokal...';
+                            this.connectionStatus = 'offline';
+                            this.loadDataFromLocal();
+                            console.log('📱 Offline mode activated');
+                        }
                         
                     } catch (error) {
-                        console.log('🟠 Supabase connection failed, using offline mode:', error.message);
+                        console.log('🟠 Falling back to offline mode:', error.message);
                         this.connectionStatus = 'offline';
                         this.supabaseConnected = false;
-                        
-                        // Fallback to localStorage
-                        this.loadingMessage = 'Mode offline - memuat data lokal...';
                         this.loadDataFromLocal();
                     }
                     
@@ -843,50 +912,120 @@
                     
                     this.isLoading = false;
                     console.log('✅ App loaded successfully');
-                    console.log('📊 Monthly data structure:', this.monthlyData);
                 },
 
                 delay(ms) {
                     return new Promise(resolve => setTimeout(resolve, ms));
                 },
 
+                async testSupabaseConnectionInit() {
+                    try {
+                        // Wait for Supabase to be available
+                        let attempts = 0;
+                        while (!window.supabaseClient && attempts < 20) {
+                            await this.delay(100);
+                            attempts++;
+                        }
+                        
+                        if (!window.supabaseClient) {
+                            throw new Error('Supabase client not initialized');
+                        }
+                        
+                        console.log('🧪 Testing Supabase connection...');
+                        
+                        // Test with shorter timeout
+                        const timeoutPromise = new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error('Connection timeout (5s)')), 5000)
+                        );
+                        
+                        const testPromise = window.supabaseClient
+                            .from('participants')
+                            .select('count')
+                            .limit(1);
+                        
+                        const { data, error } = await Promise.race([testPromise, timeoutPromise]);
+                        
+                        if (error) {
+                            throw new Error(`Supabase test failed: ${error.message}`);
+                        }
+                        
+                        this.supabaseConnected = true;
+                        console.log('✅ Supabase connection successful');
+                        return true;
+                        
+                    } catch (error) {
+                        console.log('❌ Supabase connection failed:', error.message);
+                        this.supabaseConnected = false;
+                        throw error;
+                    }
+                },
+
                 async testSupabaseConnection() {
-                    if (!window.supabaseClient) {
-                        throw new Error('Supabase client not available');
+                    this.connectionTestResult = '';
+                    this.connectionTestSuccess = false;
+                    
+                    try {
+                        if (!window.supabaseClient) {
+                            throw new Error('Supabase client tidak tersedia. Periksa konfigurasi.');
+                        }
+                        
+                        console.log('🧪 Manual testing Supabase connection...');
+                        
+                        const timeoutPromise = new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error('Timeout setelah 10 detik')), 10000)
+                        );
+                        
+                        // Test basic connection
+                        const testPromise = window.supabaseClient
+                            .from('participants')
+                            .select('count')
+                            .limit(1);
+                        
+                        const { data, error } = await Promise.race([testPromise, timeoutPromise]);
+                        
+                        if (error) {
+                            throw new Error(`Database error: ${error.message}`);
+                        }
+                        
+                        // Test write permission
+                        const { error: writeError } = await window.supabaseClient
+                            .from('daily_checks')
+                            .select('count')
+                            .limit(1);
+                            
+                        if (writeError) {
+                            console.warn('Write test warning:', writeError.message);
+                        }
+                        
+                        this.connectionTestResult = '✅ Koneksi Supabase berhasil! Database dapat diakses.';
+                        this.connectionTestSuccess = true;
+                        this.supabaseConnected = true;
+                        this.connectionStatus = 'online';
+                        
+                    } catch (error) {
+                        console.error('❌ Connection test failed:', error);
+                        this.connectionTestResult = `❌ Koneksi gagal: ${error.message}`;
+                        this.connectionTestSuccess = false;
+                        this.supabaseConnected = false;
+                        this.connectionStatus = 'offline';
                     }
-                    
-                    // Create timeout promise
-                    const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Connection timeout')), 3000)
-                    );
-                    
-                    // Test connection promise
-                    const testPromise = window.supabaseClient
-                        .from('participants')
-                        .select('count')
-                        .limit(1);
-                    
-                    const { data, error } = await Promise.race([testPromise, timeoutPromise]);
-                    
-                    if (error) {
-                        throw new Error(`Supabase connection failed: ${error.message}`);
-                    }
-                    
-                    console.log('✅ Supabase connection successful');
-                    return true;
                 },
 
                 async loadDataFromSupabase() {
                     try {
+                        console.log('📥 Loading data from Supabase...');
+                        
                         // Load participants
                         const { data: participants, error: participantsError } = await window.supabaseClient
                             .from('participants')
                             .select('*')
                             .order('id');
                             
-                        if (participantsError) throw participantsError;
-                        if (participants && participants.length > 0) {
+                        if (participantsError) {
+                            console.warn('Participants load warning:', participantsError);
+                        } else if (participants && participants.length > 0) {
                             this.participants = participants;
+                            console.log('✅ Participants loaded:', participants.length);
                         }
 
                         // Load today's checks
@@ -896,20 +1035,23 @@
                             .select('participant_id')
                             .eq('check_date', today);
                             
-                        if (checksError) throw checksError;
-                        
-                        this.todayChecks = {};
-                        this.todayChecks[today] = todayChecks ? todayChecks.map(check => check.participant_id) : [];
+                        if (checksError) {
+                            console.warn('Today checks load warning:', checksError);
+                        } else {
+                            this.todayChecks = {};
+                            this.todayChecks[today] = todayChecks ? todayChecks.map(check => check.participant_id) : [];
+                            console.log('✅ Today checks loaded:', this.todayChecks[today].length);
+                        }
 
-                        // Load monthly data from Supabase (if exists)
+                        // Load monthly data from Supabase
                         const { data: monthlyRecords, error: monthlyError } = await window.supabaseClient
                             .from('monthly_records')
                             .select('*');
                             
-                        if (monthlyError) throw monthlyError;
-                        
-                        // Reconstruct monthly data structure
-                        if (monthlyRecords && monthlyRecords.length > 0) {
+                        if (monthlyError) {
+                            console.warn('Monthly data load warning:', monthlyError);
+                        } else if (monthlyRecords && monthlyRecords.length > 0) {
+                            // Reconstruct monthly data structure
                             this.monthlyData = {};
                             monthlyRecords.forEach(record => {
                                 if (!this.monthlyData[record.month]) {
@@ -930,12 +1072,13 @@
                                     this.monthlyData[record.month].khatamDays.push(record.check_date);
                                 }
                             });
+                            console.log('✅ Monthly data loaded');
                         }
 
-                        console.log('✅ Data loaded from Supabase');
+                        console.log('✅ All data loaded from Supabase successfully');
                         
                     } catch (error) {
-                        console.error('Error loading data from Supabase:', error);
+                        console.error('❌ Error loading data from Supabase:', error);
                         throw error;
                     }
                 },
