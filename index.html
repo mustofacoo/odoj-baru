@@ -502,7 +502,7 @@
             <div class="bg-white rounded-xl p-4 md:p-6 card-shadow mb-6">
                 <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
                     <label class="font-semibold text-gray-700 text-sm md:text-base">Pilih Bulan:</label>
-                    <select x-model="selectedMonth" @change="updateMonthlyData()" 
+                    <select x-model="selectedMonth" @change="updateMonthlyView()" 
                             class="border border-gray-300 rounded-lg px-3 py-2 md:px-4 md:py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm md:text-base">
                         <template x-for="month in availableMonths" :key="month.value">
                             <option :value="month.value" x-text="month.label"></option>
@@ -784,7 +784,7 @@
                 // State management
                 activeTab: 'checklist',
                 todayChecks: {},
-                monthlyData: {},
+                monthlyData: {}, // Format: { "2025-07": { participantChecks: { 1: ["2025-07-01", "2025-07-02"], 2: [...] }, khatamDays: ["2025-07-01"] } }
                 selectedMonth: '',
                 availableMonths: [],
                 
@@ -833,7 +833,10 @@
                     this.loadingMessage = 'Menyiapkan data bulanan...';
                     this.generateAvailableMonths();
                     this.selectedMonth = this.getCurrentMonth();
-                    this.updateMonthlyData();
+                    
+                    // Initialize monthly data structure
+                    this.loadingMessage = 'Menginisialisasi struktur data bulanan...';
+                    this.initializeMonthlyData();
                     
                     // Final setup
                     this.loadingMessage = 'Menyelesaikan setup...';
@@ -841,6 +844,7 @@
                     
                     this.isLoading = false;
                     console.log('✅ App loaded successfully');
+                    console.log('📊 Monthly data structure:', this.monthlyData);
                 },
 
                 delay(ms) {
@@ -898,6 +902,37 @@
                         this.todayChecks = {};
                         this.todayChecks[today] = todayChecks ? todayChecks.map(check => check.participant_id) : [];
 
+                        // Load monthly data from Supabase (if exists)
+                        const { data: monthlyRecords, error: monthlyError } = await window.supabaseClient
+                            .from('monthly_records')
+                            .select('*');
+                            
+                        if (monthlyError) throw monthlyError;
+                        
+                        // Reconstruct monthly data structure
+                        if (monthlyRecords && monthlyRecords.length > 0) {
+                            this.monthlyData = {};
+                            monthlyRecords.forEach(record => {
+                                if (!this.monthlyData[record.month]) {
+                                    this.monthlyData[record.month] = {
+                                        participantChecks: {},
+                                        khatamDays: []
+                                    };
+                                }
+                                
+                                if (record.participant_id) {
+                                    if (!this.monthlyData[record.month].participantChecks[record.participant_id]) {
+                                        this.monthlyData[record.month].participantChecks[record.participant_id] = [];
+                                    }
+                                    this.monthlyData[record.month].participantChecks[record.participant_id].push(record.check_date);
+                                }
+                                
+                                if (record.is_khatam && !this.monthlyData[record.month].khatamDays.includes(record.check_date)) {
+                                    this.monthlyData[record.month].khatamDays.push(record.check_date);
+                                }
+                            });
+                        }
+
                         console.log('✅ Data loaded from Supabase');
                         
                     } catch (error) {
@@ -935,6 +970,25 @@
                         this.todayChecks = {};
                         this.monthlyData = {};
                     }
+                },
+
+                initializeMonthlyData() {
+                    const currentMonth = this.getCurrentMonth();
+                    
+                    // Initialize current month if not exists
+                    if (!this.monthlyData[currentMonth]) {
+                        this.monthlyData[currentMonth] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                        
+                        // Initialize all participants for current month
+                        this.participants.forEach(participant => {
+                            this.monthlyData[currentMonth].participantChecks[participant.id] = [];
+                        });
+                    }
+                    
+                    console.log('📊 Monthly data initialized for', currentMonth);
                 },
 
                 checkAnnouncementStatus() {
@@ -1007,6 +1061,12 @@
                     return jakartaTime.toISOString().slice(0, 7);
                 },
 
+                getTodayKey() {
+                    const now = new Date();
+                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+                    return jakartaTime.toISOString().slice(0, 10);
+                },
+
                 getDaysInMonth(monthString = null) {
                     const targetMonth = monthString || this.selectedMonth;
                     if (!targetMonth) return 31;
@@ -1049,26 +1109,60 @@
 
                 async toggleCheck(participantId) {
                     const today = this.getTodayKey();
+                    const currentMonth = this.getCurrentMonth();
                     
+                    // Ensure today's checks array exists
                     if (!this.todayChecks[today]) {
                         this.todayChecks[today] = [];
+                    }
+                    
+                    // Ensure monthly data structure exists
+                    if (!this.monthlyData[currentMonth]) {
+                        this.monthlyData[currentMonth] = {
+                            participantChecks: {},
+                            khatamDays: []
+                        };
+                    }
+                    
+                    // Ensure participant exists in monthly data
+                    if (!this.monthlyData[currentMonth].participantChecks[participantId]) {
+                        this.monthlyData[currentMonth].participantChecks[participantId] = [];
                     }
                     
                     const index = this.todayChecks[today].indexOf(participantId);
                     const isCurrentlyChecked = index > -1;
                     
-                    // Update local state
+                    // Update local state for today's checks
                     if (isCurrentlyChecked) {
                         this.todayChecks[today].splice(index, 1);
                     } else {
                         this.todayChecks[today].push(participantId);
                     }
                     
+                    // Update monthly records
+                    const monthlyChecks = this.monthlyData[currentMonth].participantChecks[participantId];
+                    const monthlyIndex = monthlyChecks.indexOf(today);
+                    
+                    if (isCurrentlyChecked) {
+                        // Remove from monthly record
+                        if (monthlyIndex > -1) {
+                            monthlyChecks.splice(monthlyIndex, 1);
+                        }
+                    } else {
+                        // Add to monthly record (avoid duplicates)
+                        if (monthlyIndex === -1) {
+                            monthlyChecks.push(today);
+                        }
+                    }
+                    
+                    // Update khatam status
+                    this.updateKhatamStatus(today, currentMonth);
+                    
                     // Save to Supabase if connected
                     if (this.supabaseConnected) {
                         try {
                             if (isCurrentlyChecked) {
-                                // Remove check
+                                // Remove check from Supabase
                                 const { error } = await window.supabaseClient
                                     .from('daily_checks')
                                     .delete()
@@ -1076,9 +1170,18 @@
                                     .eq('check_date', today);
                                     
                                 if (error) throw error;
+                                
+                                // Remove from monthly_records
+                                await window.supabaseClient
+                                    .from('monthly_records')
+                                    .delete()
+                                    .eq('participant_id', participantId)
+                                    .eq('check_date', today)
+                                    .eq('month', currentMonth);
+                                    
                                 console.log('✅ Check removed from Supabase');
                             } else {
-                                // Add check
+                                // Add check to Supabase
                                 const { error } = await window.supabaseClient
                                     .from('daily_checks')
                                     .insert({
@@ -1087,17 +1190,34 @@
                                     });
                                     
                                 if (error) throw error;
+                                
+                                // Add to monthly_records
+                                await window.supabaseClient
+                                    .from('monthly_records')
+                                    .upsert({
+                                        month: currentMonth,
+                                        check_date: today,
+                                        participant_id: participantId,
+                                        is_khatam: false
+                                    });
+                                    
                                 console.log('✅ Check added to Supabase');
                             }
                         } catch (error) {
                             console.error('Error syncing with Supabase:', error);
-                            // Revert local change if Supabase fails
+                            // Revert local changes if Supabase fails
                             if (isCurrentlyChecked) {
                                 this.todayChecks[today].push(participantId);
+                                if (monthlyIndex === -1) {
+                                    monthlyChecks.push(today);
+                                }
                             } else {
                                 const revertIndex = this.todayChecks[today].indexOf(participantId);
                                 if (revertIndex > -1) {
                                     this.todayChecks[today].splice(revertIndex, 1);
+                                }
+                                if (monthlyIndex > -1) {
+                                    monthlyChecks.splice(monthlyIndex, 1);
                                 }
                             }
                             alert('Gagal sinkronisasi dengan server. Coba lagi.');
@@ -1105,59 +1225,58 @@
                         }
                     }
                     
-                    this.updateMonthlyRecord();
                     this.saveData();
                 },
 
-                getTodayKey() {
-                    const now = new Date();
-                    const jakartaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-                    return jakartaTime.toISOString().slice(0, 10);
+                updateKhatamStatus(date, month) {
+                    const completedCount = this.todayChecks[date]?.length || 0;
+                    const khatamDays = this.monthlyData[month].khatamDays;
+                    const isKhatamDay = khatamDays.includes(date);
+                    
+                    if (completedCount === 30 && !isKhatamDay) {
+                        // Add khatam day
+                        khatamDays.push(date);
+                        
+                        // Save to Supabase if connected
+                        if (this.supabaseConnected) {
+                            window.supabaseClient
+                                .from('monthly_records')
+                                .upsert({
+                                    month: month,
+                                    check_date: date,
+                                    participant_id: null,
+                                    is_khatam: true
+                                })
+                                .then(({ error }) => {
+                                    if (error) console.error('Error saving khatam status:', error);
+                                });
+                        }
+                        
+                    } else if (completedCount < 30 && isKhatamDay) {
+                        // Remove khatam day
+                        const index = khatamDays.indexOf(date);
+                        if (index > -1) {
+                            khatamDays.splice(index, 1);
+                        }
+                        
+                        // Remove from Supabase if connected
+                        if (this.supabaseConnected) {
+                            window.supabaseClient
+                                .from('monthly_records')
+                                .delete()
+                                .eq('month', month)
+                                .eq('check_date', date)
+                                .eq('is_khatam', true)
+                                .then(({ error }) => {
+                                    if (error) console.error('Error removing khatam status:', error);
+                                });
+                        }
+                    }
                 },
 
                 getTodayCompleted() {
                     const today = this.getTodayKey();
                     return this.todayChecks[today]?.length || 0;
-                },
-
-                updateMonthlyRecord() {
-                    const month = this.getCurrentMonth();
-                    const today = this.getTodayKey();
-                    
-                    if (!this.monthlyData[month]) {
-                        this.monthlyData[month] = {
-                            participantChecks: {},
-                            khatamDays: []
-                        };
-                    }
-                    
-                    this.participants.forEach(participant => {
-                        if (!this.monthlyData[month].participantChecks[participant.id]) {
-                            this.monthlyData[month].participantChecks[participant.id] = [];
-                        }
-                        
-                        const checks = this.monthlyData[month].participantChecks[participant.id];
-                        const isCompleted = this.isCompleted(participant.id);
-                        const alreadyRecorded = checks.includes(today);
-                        
-                        if (isCompleted && !alreadyRecorded) {
-                            checks.push(today);
-                        } else if (!isCompleted && alreadyRecorded) {
-                            const index = checks.indexOf(today);
-                            checks.splice(index, 1);
-                        }
-                    });
-                    
-                    const completedToday = this.getTodayCompleted();
-                    const khatamDays = this.monthlyData[month].khatamDays;
-                    const isKhatamDay = khatamDays.includes(today);
-                    
-                    if (completedToday === 30 && !isKhatamDay) {
-                        khatamDays.push(today);
-                    } else if (completedToday < 30 && isKhatamDay) {
-                        const index = khatamDays.indexOf(today);
-                        khatamDays.splice(index, 1);
-                    }
                 },
 
                 generateAvailableMonths() {
@@ -1181,13 +1300,19 @@
                     this.availableMonths = months;
                 },
 
-                updateMonthlyData() {
-                    const currentMonth = this.getCurrentMonth();
-                    if (!this.monthlyData[currentMonth]) {
-                        this.monthlyData[currentMonth] = {
+                updateMonthlyView() {
+                    // This function is called when user changes the selected month
+                    // It ensures the monthly data structure exists for the selected month
+                    if (!this.monthlyData[this.selectedMonth]) {
+                        this.monthlyData[this.selectedMonth] = {
                             participantChecks: {},
                             khatamDays: []
                         };
+                        
+                        // Initialize all participants for this month
+                        this.participants.forEach(participant => {
+                            this.monthlyData[this.selectedMonth].participantChecks[participant.id] = [];
+                        });
                     }
                 },
 
@@ -1221,6 +1346,7 @@
                         localStorage.setItem('quranTrackerTodayChecks', JSON.stringify(this.todayChecks));
                         localStorage.setItem('quranTrackerMonthlyData', JSON.stringify(this.monthlyData));
                         localStorage.setItem('quranTrackerParticipants', JSON.stringify(this.participants));
+                        console.log('✅ Data saved to localStorage');
                     } catch (error) {
                         console.error('Error saving to localStorage:', error);
                     }
