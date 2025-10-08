@@ -191,7 +191,7 @@
 
         <!-- Tab Content: Checklist Harian -->
         <div x-show="activeTab === 'checklist'" class="container mx-auto px-3 pb-20">
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-1.5">
                 <template x-for="(participant, index) in getRotatedParticipants()" :key="participant.id">
                     <div class="juz-card bg-white rounded-xl card-shadow relative" 
                          :class="{'completed': isCompleted(participant.id)}"
