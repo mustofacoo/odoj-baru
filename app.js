@@ -88,12 +88,12 @@
                     
                     try {
                         // Test Supabase connection with better timeout
-                        this.loadingMessage = 'Menguji koneksi Supabase...';
+                        this.loadingMessage = 'Bismillaah...';
                         await this.testSupabaseConnectionInit();
                         
                         if (this.supabaseConnected) {
                             // Load data from Supabase
-                            this.loadingMessage = 'Memuat data dari Supabase...';
+                            this.loadingMessage = 'Memuat data...';
                             await this.loadDataFromSupabase();
                             this.connectionStatus = 'online';
                             console.log('✅ Supabase mode activated');
