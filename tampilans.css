@@ -1,421 +1,513 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-* {
-    box-sizing: border-box;
-}
-
-body { 
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-/* Gradient Backgrounds */
-.gradient-bg {
-    background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-}
-
-/* Card Styles - Compact & Clean */
-.card-shadow {
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-    transition: box-shadow 0.2s ease;
-}
-
-.card-shadow:hover {
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
-}
-
-/* Completed State */
-.completed {
-    background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-    transform: scale(1);
-    border: 1.5px solid #ea580c;
-}
-
-/* Juz Card - Compact Design */
-.juz-card {
-    transition: all 0.2s ease;
-    cursor: pointer;
-    border: 1.5px solid #e5e7eb;
-    padding: 12px !important;
-    min-height: 180px;
-}
-
-.juz-card:hover {
-    transform: translateY(-1px);
-    border-color: #ea580c;
-}
-
-.juz-card:active {
-    transform: scale(0.98);
-}
-
-/* Admin Badge */
-.admin-badge {
-    background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-    font-size: 13px;
-    padding: 6px 12px;
-}
-
-/* Khatam Celebration */
-.khatam-celebration {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    animation: celebration 0.5s ease-in-out;
-}
-
-@keyframes celebration {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-}
-
-/* Buttons - Compact */
-.btn-primary {
-    background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-    transition: all 0.2s ease;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    transform: translateY(-1px);
-}
-
-.btn-primary:active {
-    transform: scale(0.98);
-}
-
-/* Color Utilities */
-.text-primary {
-    color: #ea580c;
-}
-
-.bg-primary {
-    background-color: #ea580c;
-}
-
-.border-primary {
-    border-color: #ea580c;
-}
-
-/* Mobile Optimizations - Ultra Compact */
-@media (max-width: 768px) {
-    body {
-        font-size: 13px;
-    }
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bismillah, One Day One Juz</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="tampilans.css">
     
-    .juz-card {
-        padding: 10px !important;
-        min-height: 160px;
-    }
-    
-    .grid-mobile {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-    
-    .text-responsive {
-        font-size: 12px;
-    }
-    
-    /* Compact Header */
-    header .container {
-        padding-top: 12px !important;
-        padding-bottom: 12px !important;
-    }
-    
-    /* Compact Stats */
-    .stats-card {
-        padding: 12px !important;
-    }
-    
-    /* Compact Spacing */
-    .container {
-        padding-left: 12px !important;
-        padding-right: 12px !important;
-    }
-    
-    /* Section Spacing */
-    .py-6 {
-        padding-top: 12px !important;
-        padding-bottom: 12px !important;
-    }
-    
-    .mb-6 {
-        margin-bottom: 12px !important;
-    }
-    
-    .gap-4 {
-        gap: 10px !important;
-    }
-    
-    /* Grid Compact */
-    .grid {
-        gap: 10px !important;
-    }
-}
+    <!-- Supabase SDK - Updated to latest version -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+    <script src="juz-data.js"></script>
+    <script src="peserta.js"></script>
+    <script src="supabase.js"></script>
+    <script src="app.js"></script>
 
-/* Modal Backdrop */
-.modal-backdrop {
-    backdrop-filter: blur(4px);
-}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div x-data="quranTracker()" x-init="init()" class="min-h-screen">
+        
+        <!-- Loading Overlay -->
+        <div x-show="isLoading" class="loading-overlay">
+            <div class="bg-white rounded-lg p-6 text-center">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-gray-600 text-sm" x-text="loadingMessage"></p>
+            </div>
+        </div>
 
-/* Announcement Modal */
-.announcement-modal {
-    animation: slideIn 0.3s ease-out;
-}
+        <!-- Connection Status -->
+        <div class="connection-status" 
+             :class="{
+                'status-online': connectionStatus === 'online',
+                'status-offline': connectionStatus === 'offline', 
+                'status-connecting': connectionStatus === 'connecting'
+             }"
+             x-show="connectionStatus !== 'online'">
+            <span x-show="connectionStatus === 'connecting'">Menghubungkan...</span>
+            <span x-show="connectionStatus === 'offline'">Mode Offline</span>
+        </div>
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-30px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
+        <!-- Initial Announcement Modal -->
+        <div x-show="showAnnouncement" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 modal-backdrop p-3">
+            <div class="announcement-modal bg-white rounded-2xl p-5 max-w-lg w-full card-shadow border-t-4 border-primary">
+                <div class="text-center">
+                    <div class="bg-primary rounded-full w-14 h-14 flex items-center justify-center mx-auto mb-3">
+                        <span class="text-white text-2xl">📖</span>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">📢 Selamat Datang!</h2>
+                    <div class="text-left bg-orange-50 border-l-4 border-primary p-3 rounded-lg mb-4">
+                        <h3 class="font-semibold text-gray-800 mb-2 text-sm">⚠️ Perhatikan Deskripsi Juz!</h3>
+                        <ul class="text-xs text-gray-700 space-y-1.5">
+                            <li>• <strong>WAJIB</strong> membaca deskripsi juz yang akan dibaca</li>
+                            <li>• Ada beberapa juz yang <strong>tidak sesuai</strong> dengan pembagian halaman mushaf</li>
+                            <li>• Penyesuaian dilakukan untuk <strong>menyesuaikan tema</strong> dan kandungan</li>
+                            <li>• Lihat <strong>halaman dan ayat yang tepat</strong> di setiap kartu juz</li>
+                        </ul>
+                    </div>
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-lg mb-4 text-left">
+                        <h3 class="font-semibold text-blue-800 mb-2 text-sm">Doa Sebelum Membaca</h3>
+                        <p class="text-xs text-blue-700 italic">
+                            "Ya Allah, turunkan rahmat kepada kami dengan wasilah bacaan Al-Qur'an. 
+                            Jadikan kami lebih mencintai untuk berinteraksi dengan Al-Qur'an daripada berbuat sia-sia. 
+                            Anugerahkan kami pemahaman Al-Qur'an dan pengamalannya. 
+                            Perkenankan Al-Qur'an memberi syafaat untuk kami di hari kiamat."
+                        </p>
+                    </div>
+                    <button @click="closeAnnouncement()" 
+                            class="w-full btn-primary text-white py-2.5 px-6 rounded-lg font-semibold text-sm hover:bg-red-600 transition-all duration-300">
+                        ✅ Alhamdulillah saya paham. Lanjut centang...
+                    </button>
+                </div>
+            </div>
+        </div>
 
-/* Export Text Area */
-.export-text {
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    line-height: 1.4;
-    white-space: pre-wrap;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 12px;
-    max-height: 300px;
-    overflow-y: auto;
-}
+        <!-- Edit Participant Modal -->
+        <div x-show="showEditParticipant" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-3">
+            <div class="bg-white rounded-xl p-5 max-w-md w-full card-shadow"
+                 @click.away="showEditParticipant = false">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">✏️ Edit Nama Peserta</h3>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">Nama Peserta</label>
+                        <input x-model="editingParticipant.name" 
+                               type="text" 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                               placeholder="Masukkan nama peserta"
+                               @keyup.enter="saveParticipantName()">
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3 mt-4">
+                    <button @click="showEditParticipant = false" 
+                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-300 text-sm">
+                        Batal
+                    </button>
+                    <button @click="saveParticipantName()" 
+                            class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300 text-sm">
+                        Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
 
-/* Floating Action Buttons */
-.floating-buttons {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    z-index: 40;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+        <!-- Header -->
+        <header class="gradient-bg text-white shadow-lg">
+            <div class="container mx-auto px-3 py-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-lg font-bold">One Day One Juz</h1>
+                        <p class="text-orange-100 mt-0.5 text-xs">Istiqomah bersama Al Qur'an</p>
+                    </div>
+                    <div>
+                        <div x-show="!isAdmin">
+                            <button @click="showAdminLogin = true" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1.5 rounded-lg transition-all duration-300 text-xs">
+                                Admin
+                            </button>
+                        </div>
+                        <div x-show="isAdmin" class="admin-badge px-3 py-1.5 rounded-lg">
+                            <span class="text-white font-semibold text-xs">Admin</span>
+                            <button @click="logout()" class="ml-2 text-white hover:text-gray-200 text-xs">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-.floating-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transition: all 0.2s ease;
-    text-decoration: none;
-}
+        <!-- Stats -->
+        <div class="container mx-auto px-3 py-3">
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-white rounded-xl p-3 card-shadow">
+                    <div class="flex flex-col items-center text-center">
+                        <h3 class="text-gray-500 text-[10px] mb-0.5">Tanggal</h3>
+                        <p class="text-xs font-bold text-gray-800 leading-tight" x-text="getCurrentDate()"></p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-3 card-shadow">
+                    <div class="flex flex-col items-center text-center">
+                        <h3 class="text-gray-500 text-[10px] mb-0.5">Selesai</h3>
+                        <p class="text-xs font-bold text-gray-800"><span x-text="getTodayCompleted()"></span>/30</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-3 card-shadow" :class="{'khatam-celebration': getTodayCompleted() === 30}">
+                    <div class="flex flex-col items-center text-center">
+                        <h3 class="text-gray-500 text-[10px] mb-0.5">Status</h3>
+                        <p class="text-xs font-bold text-gray-800 leading-tight" x-text="getTodayCompleted() === 30 ? 'KHATAM! 🎉' : (30 - getTodayCompleted()) + ' lagi'"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-.floating-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
+        <!-- Navigation Tabs -->
+        <div class="container mx-auto px-3 mb-3">
+            <div class="bg-white rounded-xl p-1.5 card-shadow">
+                <div class="flex space-x-1">
+                    <button @click="activeTab = 'checklist'" 
+                            :class="activeTab === 'checklist' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+                            class="flex-1 py-2 px-2 rounded-lg font-semibold transition-all duration-300 text-xs">
+                        📋 Checklist
+                    </button>
+                    <button @click="activeTab = 'monthly'" 
+                            :class="activeTab === 'monthly' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+                            class="flex-1 py-2 px-2 rounded-lg font-semibold transition-all duration-300 text-xs">
+                        Rekap
+                    </button>
+                    <button x-show="isAdmin" @click="activeTab = 'admin'" 
+                            :class="activeTab === 'admin' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+                            class="flex-1 py-2 px-2 rounded-lg font-semibold transition-all duration-300 text-xs">
+                        Admin
+                    </button>
+                </div>
+            </div>
+        </div>
 
-.floating-btn:active {
-    transform: scale(0.95);
-}
+        <!-- Tab Content: Checklist Harian -->
+        <div x-show="activeTab === 'checklist'" class="container mx-auto px-3 pb-20">
+            <div class="grid grid-cols-2 gap-1.5">
+                <template x-for="(participant, index) in getRotatedParticipants()" :key="participant.id">
+                    <div class="juz-card bg-white rounded-xl card-shadow relative" 
+                         :class="{'completed': isCompleted(participant.id)}"
+                         @click="toggleCheck(participant.id)">
+                        
+                        <!-- Edit Button (Admin Only) -->
+                        <button x-show="isAdmin" 
+                                @click.stop="editParticipant(participant)"
+                                class="edit-participant-btn">
+                            ✏️
+                        </button>
+                        
+                        <!-- Juz Header -->
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="text-sm font-bold" :class="isCompleted(participant.id) ? 'text-white' : 'text-gray-800'" x-text="'Juz ' + (index + 1)"></h3>
+                                <p class="text-[10px] leading-tight" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-500'" x-text="getJuzDetails(index + 1).name"></p>
+                            </div>
+                            <div class="text-lg" x-text="isCompleted(participant.id) ? '✅' : '⏳'"></div>
+                        </div>
+                        
+                        <!-- Participant Info -->
+                        <div class="mb-2">
+                            <h4 class="font-semibold text-xs" :class="isCompleted(participant.id) ? 'text-white' : 'text-gray-700'" x-text="participant.name"></h4>
+                            <p class="text-[10px]" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-500'" x-text="'Hal. ' + getJuzDetails(index + 1).pages"></p>
+                        </div>
+                        
+                        <!-- Juz Content -->
+                        <div class="mb-2">
+                            <p class="text-[10px] font-medium leading-tight" :class="isCompleted(participant.id) ? 'text-orange-100' : 'text-gray-600'" x-text="getJuzDetails(index + 1).content"></p>
+                        </div>
+                        
+                        <!-- Status -->
+                        <div class="mt-2 text-center">
+                            <span class="text-[10px] font-semibold" :class="isCompleted(participant.id) ? 'text-white' : 'text-gray-500'">
+                                <span x-show="isCompleted(participant.id)">✅ Selesai</span>
+                                <span x-show="!isCompleted(participant.id)">⏳ Belum</span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
 
-.whatsapp-btn {
-    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
-    color: white;
-}
+        <!-- Tab Content: Rekap Bulanan -->
+        <div x-show="activeTab === 'monthly'" class="container mx-auto px-3 pb-20">
+            <!-- Month Selection -->
+            <div class="bg-white rounded-xl p-3 card-shadow mb-3">
+                <div class="flex items-center space-x-3">
+                    <label class="font-semibold text-gray-700 text-xs">Bulan:</label>
+                    <select x-model="selectedMonth" @change="updateMonthlyView()" 
+                            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-xs">
+                        <template x-for="month in availableMonths" :key="month.value">
+                            <option :value="month.value" x-text="month.label"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
 
-.donate-btn {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-}
+            <!-- Monthly Stats -->
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div class="bg-white rounded-xl p-3 card-shadow">
+                    <div class="flex items-center">
+                        <div>
+                            <h3 class="text-gray-500 text-[10px]">Total Khatam</h3>
+                            <p class="text-lg font-bold text-yellow-600" x-text="getMonthlyKhatam()"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-3 card-shadow">
+                    <div class="flex items-center">
+                        <div>
+                            <h3 class="text-gray-500 text-[10px]">Partisipasi</h3>
+                            <p class="text-lg font-bold text-primary" x-text="getTotalMonthlyChecks()"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-@media (max-width: 768px) {
-    .floating-btn {
-        width: 44px;
-        height: 44px;
-    }
-    
-    .floating-buttons {
-        bottom: 12px;
-        right: 12px;
-        gap: 8px;
-    }
-}
+            <!-- Monthly Progress Table -->
+            <div class="bg-white rounded-xl card-shadow overflow-hidden">
+                <div class="p-3 border-b border-gray-200">
+                    <h3 class="text-sm font-bold text-gray-800">Progress Peserta</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Peserta</th>
+                                <th class="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Centang</th>
+                                <th class="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">%</th>
+                                <th class="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="participant in participants" :key="participant.id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-3 py-2">
+                                        <div class="text-xs font-medium text-gray-900" x-text="participant.name"></div>
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <div class="text-xs text-gray-900" x-text="getParticipantMonthlyCount(participant.id) + '/' + getDaysInMonth()"></div>
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <div class="text-xs text-gray-900" x-text="Math.round((getParticipantMonthlyCount(participant.id) / getDaysInMonth()) * 100) + '%'"></div>
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div class="bg-primary h-1.5 rounded-full transition-all duration-500" 
+                                                 :style="'width: ' + Math.round((getParticipantMonthlyCount(participant.id) / getDaysInMonth()) * 100) + '%'"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-/* Loading Overlay */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-}
+        <!-- Tab Content: Admin -->
+        <div x-show="activeTab === 'admin' && isAdmin" class="container mx-auto px-3 pb-20">
+            <div class="bg-white rounded-xl p-4 card-shadow">
+                <h3 class="text-base font-bold text-gray-800 mb-4">🔧 Panel Admin</h3>
+                
+                <div class="space-y-3">
+                    <!-- Export WhatsApp Data -->
+                    <div class="border border-gray-200 rounded-lg p-3">
+                        <h4 class="text-sm font-semibold text-gray-800 mb-2">📤 Ekspor Data WhatsApp</h4>
+                        <p class="text-xs text-gray-600 mb-3">
+                            Export data progress hari ini dalam format yang siap untuk dibagikan ke berbagai grup.
+                        </p>
+                        
+                        <button @click="generateWhatsAppExport()" 
+                                class="btn-primary text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-300 text-xs font-semibold w-full">
+                            📱 Kirim laporan ke Grup Odoj
+                        </button>
+                        
+                        <div x-show="exportText" class="mt-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-medium text-gray-700">Hasil Export:</label>
+                                <button @click="copyToClipboard()" 
+                                        class="text-[10px] px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all">
+                                    📋 Copy
+                                </button>
+                            </div>
+                            <div class="export-text" x-text="exportText"></div>
+                            <p class="text-[10px] text-gray-500 mt-2">
+                                ✅ Data berhasil di-generate! Klik "Copy" lalu paste ke WhatsApp grup.
+                            </p>
+                        </div>
+                    </div>
 
-.spinner {
-    width: 36px;
-    height: 36px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #ea580c;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
+                    <!-- Debug Data -->
+                    <div class="border border-blue-200 rounded-lg p-3 bg-blue-50">
+                        <h4 class="text-sm font-semibold text-blue-800 mb-2">🔍 Debug Data</h4>
+                        <p class="text-xs text-blue-700 mb-3">
+                            Untuk mengecek apakah data rekap bulanan tersimpan dengan benar.
+                        </p>
+                        
+                        <button @click="debugMonthlyData()" 
+                                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-300 text-xs font-semibold w-full">
+                            🔍 Debug Monthly Data
+                        </button>
+                        
+                        <div x-show="debugResult" class="mt-3 p-2 rounded bg-gray-100">
+                            <pre class="text-[10px] overflow-x-auto" x-text="debugResult"></pre>
+                        </div>
+                    </div>
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+                    <!-- Force Sync -->
+                    <div class="border border-green-200 rounded-lg p-3 bg-green-50">
+                        <h4 class="text-sm font-semibold text-green-800 mb-2">🔄 Force Sync Data</h4>
+                        <p class="text-xs text-green-700 mb-3">
+                            Paksa sinkronisasi semua data lokal ke Supabase.
+                        </p>
+                        
+                        <button @click="forceSyncAllData()" 
+                                class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300 text-xs font-semibold w-full"
+                                :disabled="!supabaseConnected">
+                            🚀 Force Sync ke Supabase
+                        </button>
+                        
+                        <p x-show="!supabaseConnected" class="text-[10px] text-red-600 mt-2">
+                            ⚠️ Supabase tidak terhubung.
+                        </p>
+                    </div>
 
-/* Edit Participant Button */
-.edit-participant-btn {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    background: rgba(0,0,0,0.5);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    font-size: 11px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+                    <!-- Supabase Connection Test -->
+                    <div class="border border-blue-200 rounded-lg p-3 bg-blue-50">
+                        <h4 class="text-sm font-semibold text-blue-800 mb-2">🔧 Test Koneksi Supabase</h4>
+                        <p class="text-xs text-blue-700 mb-3">
+                            Klik tombol ini untuk menguji koneksi ke database Supabase.
+                        </p>
+                        
+                        <button @click="testSupabaseConnection()" 
+                                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-300 text-xs font-semibold w-full">
+                            🧪 Test Koneksi
+                        </button>
+                        
+                        <div x-show="connectionTestResult" class="mt-3 p-2 rounded text-xs" :class="connectionTestSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                            <p x-text="connectionTestResult"></p>
+                        </div>
+                    </div>
 
-.juz-card:hover .edit-participant-btn {
-    opacity: 1;
-}
+                    <!-- Reset System -->
+                    <div class="border border-red-200 rounded-lg p-3 bg-red-50">
+                        <h4 class="text-sm font-semibold text-red-800 mb-2">🔄 Reset Sistem</h4>
+                        <p class="text-xs text-red-700 mb-3">
+                            <strong>Peringatan:</strong> Ini akan menghapus semua data progress.
+                        </p>
+                        
+                        <button @click="resetSystem()" 
+                                class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-300 text-xs font-semibold w-full">
+                            🗑️ Reset Semua Data
+                        </button>
+                    </div>
 
-/* Connection Status */
-.connection-status {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 50;
-    padding: 6px 12px;
-    border-radius: 16px;
-    font-size: 11px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
+                    <!-- Data Info -->
+                    <div class="border border-gray-200 rounded-lg p-3">
+                        <h4 class="text-sm font-semibold text-gray-800 mb-2">💾 Informasi Data</h4>
+                        <div class="space-y-1 text-xs">
+                            <p><strong>Status:</strong> 
+                                <span :class="supabaseConnected ? 'text-green-600' : 'text-orange-600'" 
+                                      x-text="supabaseConnected ? '🟢 Connected' : '🟠 Offline'"></span>
+                            </p>
+                            <p><strong>Penyimpanan:</strong> 
+                                <span x-text="supabaseConnected ? 'Supabase + Local' : 'Local Storage'"></span>
+                            </p>
+                            <p><strong>Sync:</strong> 
+                                <span :class="supabaseConnected ? 'text-green-600' : 'text-red-600'" 
+                                      x-text="supabaseConnected ? '✅ Aktif' : '❌ Nonaktif'"></span>
+                            </p>
+                            <p><strong>Peserta:</strong> <span x-text="participants.length"></span></p>
+                            <p><strong>Selesai:</strong> <span x-text="getTodayCompleted()"></span></p>
+                            <div x-show="supabaseConnected" class="mt-2 p-2 bg-green-50 rounded">
+                                <p class="text-green-700 text-[10px]">
+                                    <strong>🔄 Multi-Device:</strong> Centang dari device manapun akan sync otomatis.
+                                </p>
+                            </div>
+                            <div x-show="!supabaseConnected" class="mt-2 p-2 bg-orange-50 rounded">
+                                <p class="text-orange-700 text-[10px]">
+                                    <strong>📱 Single Device:</strong> Data tersimpan lokal di browser ini saja.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-.status-online {
-    background: #10b981;
-    color: white;
-}
+        <!-- Admin Login Modal -->
+        <div x-show="showAdminLogin" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-3">
+            <div class="bg-white rounded-xl p-5 max-w-md w-full card-shadow"
+                 @click.away="showAdminLogin = false">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">🔒 Admin Login</h3>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">Username</label>
+                        <input x-model="adminCredentials.username" 
+                               type="text" 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                               placeholder="Masukkan username">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">Password</label>
+                        <input x-model="adminCredentials.password" 
+                               type="password" 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                               placeholder="Masukkan password"
+                               @keyup.enter="adminLogin()">
+                    </div>
+                </div>
+                
+                <div x-show="adminError" class="mt-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded-lg text-xs" x-text="adminError"></div>
+                
+                <div class="flex space-x-3 mt-4">
+                    <button @click="showAdminLogin = false" 
+                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-300 text-sm">
+                        Batal
+                    </button>
+                    <button @click="adminLogin()" 
+                            class="flex-1 py-2 px-4 btn-primary text-white rounded-lg hover:bg-red-600 transition-all duration-300 text-sm">
+                        Login
+                    </button>
+                </div>
+            </div>
+        </div>
 
-.status-offline {
-    background: #ef4444;
-    color: white;
-}
+        <!-- Floating Action Buttons -->
+        <div class="floating-buttons">
+            <a href="https://wa.me/6281334989001?text=Assalamu'alaikum, saya ingin bertanya-tanya tentang (isi topik pertanyaan...)" 
+               target="_blank" 
+               class="floating-btn whatsapp-btn" 
+               title="Tanya Jawab WhatsApp">
+                <span class="text-lg">💬</span>
+            </a>
+            <a href="https://sites.google.com/view/keluargaquran/home" 
+               target="_blank"
+               class="floating-btn donate-btn" 
+               title="Infaq">
+                <span class="text-lg">💰</span>
+            </a>
+        </div>
+    </div>
 
-.status-connecting {
-    background: #f59e0b;
-    color: white;
-}
 
-@media (max-width: 768px) {
-    .connection-status {
-        top: 12px;
-        right: 12px;
-        font-size: 10px;
-        padding: 5px 10px;
-    }
-}
-
-/* Table Responsive */
-@media (max-width: 768px) {
-    table {
-        font-size: 12px;
-    }
-    
-    th, td {
-        padding: 8px !important;
-    }
-}
-
-/* Form Elements - Compact */
-input, select, textarea {
-    font-size: 14px;
-}
-
-@media (max-width: 768px) {
-    input, select, textarea {
-        font-size: 13px;
-        padding: 8px 12px !important;
-    }
-}
-
-/* Modal - Compact */
-@media (max-width: 768px) {
-    .announcement-modal,
-    .bg-white.rounded-xl {
-        padding: 16px !important;
-        margin: 12px !important;
-    }
-}
-
-/* Tab Buttons - Compact */
-@media (max-width: 768px) {
-    .flex.space-x-1 button {
-        padding: 8px 6px !important;
-        font-size: 12px;
-    }
-}
-
-/* Stats Icon Size */
-@media (max-width: 768px) {
-    .bg-primary.p-3,
-    .bg-green-500.p-3,
-    .bg-yellow-500.p-3 {
-        padding: 10px !important;
-    }
-    
-    .bg-primary.p-3 span,
-    .bg-green-500.p-3 span,
-    .bg-yellow-500.p-3 span {
-        font-size: 18px !important;
-    }
-}
-
-/* Progress Bar */
-.h-2 {
-    height: 6px !important;
-}
-
-/* Smooth Scrolling */
-html {
-    scroll-behavior: smooth;
-}
-
-/* Focus States */
-input:focus, select:focus, textarea:focus, button:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
-}
-
-/* Disabled State */
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Selection Color */
-::selection {
-    background-color: #ea580c;
-    color: white;
-}
-
-::-moz-selection {
-    background-color: #ea580c;
-    color: white;
-}
+</body>
+</html>
