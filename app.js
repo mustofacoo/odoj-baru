@@ -434,6 +434,64 @@
                     }
                 },
 
+                // 🆕 Quick edit participant (untuk admin)
+                quickEditParticipant(participant) {
+                    this.editParticipant(participant);
+                },
+
+                // 🆕 Update participant name inline
+                async updateParticipantName(participantId, newName) {
+                    const trimmedName = newName.trim();
+                    
+                    if (!trimmedName) {
+                        alert('❌ Nama peserta tidak boleh kosong!');
+                        // Reload to reset the input
+                        location.reload();
+                        return;
+                    }
+                    
+                    const index = this.participants.findIndex(p => p.id === participantId);
+                    if (index !== -1) {
+                        const oldName = this.participants[index].name;
+                        
+                        // Only update if name actually changed
+                        if (oldName === trimmedName) {
+                            return;
+                        }
+                        
+                        this.participants[index].name = trimmedName;
+                        
+                        // Show loading
+                        this.isLoading = true;
+                        this.loadingMessage = 'Menyimpan perubahan...';
+                        
+                        try {
+                            // Save to Supabase if connected
+                            if (this.supabaseConnected) {
+                                const { error } = await window.supabaseClient
+                                    .from('participants')
+                                    .update({ name: trimmedName })
+                                    .eq('id', participantId);
+                                    
+                                if (error) throw error;
+                                console.log('✅ Participant name updated in Supabase');
+                            }
+                            
+                            // Save to localStorage
+                            this.saveData();
+                            
+                            alert(`✅ Nama berhasil diubah!\n\nDari: ${oldName}\nJadi: ${trimmedName}`);
+                            
+                        } catch (error) {
+                            console.error('Error updating participant:', error);
+                            alert('⚠️ Gagal menyimpan ke server, tersimpan di local saja');
+                            this.saveData(); // Still save to localStorage
+                        }
+                        
+                        this.isLoading = false;
+                    }
+                },
+
                 // 🔧 FIXED: Better timezone handling
                 getCurrentDate() {
                     return new Intl.DateTimeFormat('id-ID', {
@@ -808,13 +866,13 @@
 
                 // Admin functions
                 adminLogin() {
-                    if (this.adminCredentials.username === 'admin' && this.adminCredentials.password === 'adminqu321') {
+                    if (this.adminCredentials.password === 'odojqu') {
                         this.isAdmin = true;
                         this.showAdminLogin = false;
                         this.adminError = '';
-                        this.adminCredentials = { username: '', password: '' };
+                        this.adminCredentials = { password: '' };
                     } else {
-                        this.adminError = 'Username atau password salah!';
+                        this.adminError = 'Password salah!';
                     }
                 },
 
@@ -862,15 +920,15 @@
                         }
                     });
                     
-                    let exportText = `📖 *ONE DAY ONE JUZ TRACKER*\n`;
+                    let exportText = `📖 *ONE DAY ONE JUZ TALENTA*\n`;
                     exportText += `${dateStr}\n`;
                     exportText += `Update: ${timeStr} WIB\n`;
-                    exportText += `Sync: ${this.supabaseConnected ? 'Database terhubung' : 'Tidak terhubung'}\n`;
+               //     exportText += `Sync: ${this.supabaseConnected ? 'Database terhubung' : 'Tidak terhubung'}\n`;
                     exportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
                     
-                    exportText += `*RINGKASAN PROGRESS*\n`;
-                    exportText += `Selesai: ${completedParticipants.length}/30\n`;
-                    exportText += `Belum Selesai: ${pendingParticipants.length}/30\n`;
+               //     exportText += `*RINGKASAN PROGRESS*\n`;
+               //     exportText += `Selesai: ${completedParticipants.length}/30\n`;
+               //     exportText += `Belum Selesai: ${pendingParticipants.length}/30\n`;
                     
                     if (completedParticipants.length === 30) {
                         exportText += `*ALHAMDULILLAH KHATAM HARI INI!* \n`;
@@ -897,7 +955,7 @@
                     exportText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
                     exportText += `💝 Semoga Allah mudahkan kita semua dalam membaca Al-Qur'an\n`;
                     exportText += `🤲 Barakallahu fiikum\n\n`;
-                    exportText += `#OneDayOneJuz #AlQuranTracker #Khatam`;
+             //       exportText += `#OneDayOneJuz #AlQuranTracker #Khatam`;
                     
                     this.exportText = exportText;
                 },
