@@ -58,7 +58,7 @@
                     23: { name: "يسٓ ", content: "Yasin:1 - Az-Zumar:31", pages: "440-461"},
                     24: { name: "۞ فَمَنْ أَظْلَمُ مِمَّن كَذَبَ", content: "Az-Zumar:32 - Akhir Fushshilat", pages: "462-482"},
                     25: { name: "حمٓ ", content: "Asy Syura:1 - Al-Jatsiyah:37", pages: "482-502"},
-                    26: { name: "حمٓ", content: "Al-Ahqaf:1 - akhir Ath Thur", pages: "502-520"},
+                    26: { name: "حمٓ", content: "Al-Ahqaf:1 - akhir Qaf", pages: "502-520"},
                     27: { name: "وَٱلذَّٰرِيَـٰتِ ذَرْوًۭا", content: "Adz-Dzariyat:1 - Al-Hadid:29", pages: "520-541"},
                     28: { name: "قَدْ سَمِعَ ٱللَّهُ", content: "Al-Mujadilah:1 - At-Tahrim:12", pages: "542-561"},
                     29: { name: "تَبَـٰرَكَ ٱلَّذِى", content: "Al-Mulk:1 - Al-Mursalat:50", pages: "562-581"},
